@@ -2,11 +2,10 @@ import type { AgentAdapter, AgentRunRequest } from "@/contracts/agent";
 import { commandExists, spawnToEvents } from "./process";
 
 /**
- * Cline CLI adapter.
- *
- * NOTE: the exact headless invocation of the Cline CLI is parameterized via
- * CLINE_COMMAND and may need validation against the installed CLI version.
- * DeepSeek is passed through the environment (OpenAI-compatible provider).
+ * Cline CLI adapter (headless). Invocation validated against cline 3.0.57:
+ *   cline -c <dir> -P deepseek -m <model> --json "<prompt>"
+ * Act mode + auto-approve are the defaults when a prompt is passed. The
+ * DeepSeek provider/key live in ~/.cline (same config as the VS Code extension).
  */
 export const clineAdapter: AgentAdapter = {
   name: "cline",
@@ -16,8 +15,8 @@ export const clineAdapter: AgentAdapter = {
   },
 
   run(req: AgentRunRequest) {
-    const prompt = buildPrompt(req);
-    const args = ["-p", prompt, "--dangerously-skip-permissions"];
+    const model = req.env?.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
+    const args = ["-c", req.projectDir, "-P", "deepseek", "-m", model, "--json", buildPrompt(req)];
     return spawnToEvents("cline", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },

@@ -88,6 +88,6 @@ created → initializing → generating → qa → ready → launching → launc
 
 ## TODO / open questions
 
-- Exact Cline headless CLI syntax must be validated (adapter is parameterized).
+- ~~Exact Cline headless CLI syntax~~ validated: `cline -c <dir> -P deepseek -m <model> --json "<prompt>"` (cline 3.0.57, DeepSeek via ~/.cline).
 - Push notifications / native modules → dev-build path (deferred; $99 Apple signing).
 - V2: Docker on a VPS, model routing (flash → pro on QA failure), device-cloud validator.
