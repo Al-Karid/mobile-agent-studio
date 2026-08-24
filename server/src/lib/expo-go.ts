@@ -30,6 +30,9 @@ const EXPO_GO_THIRD_PARTY = new Set([
   "react-native-svg",
   "react-native-view-shot",
   "react-native-webview",
+  // reanimated 4 peer dependency — bundled in Expo Go's default template
+  // (create-expo-app) but not listed in the official third-party overview.
+  "react-native-worklets",
 ]);
 
 // Core packages every Expo project lists directly and that are always fine.

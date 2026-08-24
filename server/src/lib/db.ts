@@ -180,7 +180,9 @@ export function setRunStatus(id: number, status: string): void {
 }
 
 export function appendRunLog(id: number, chunk: string): void {
-  db.prepare(`UPDATE runs SET log = log || ? WHERE id = ?`).run(chunk, id);
+  // Keep only the most recent ~100KB so a verbose agent (streaming tokens)
+  // can't bloat the DB file or the API responses.
+  db.prepare(`UPDATE runs SET log = substr(log || ?, -100000) WHERE id = ?`).run(chunk, id);
 }
 
 export function setRunError(id: number, error: string): void {
