@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test $(find src -name '*.test.ts' -print)",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "test:launch": "tsx scripts/test-launch.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

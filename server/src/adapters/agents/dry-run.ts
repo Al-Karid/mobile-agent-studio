@@ -21,7 +21,7 @@ export const dryRunAdapter: AgentAdapter = {
 
     writeMinimalApp(req.projectDir, req.prompt);
 
-    yield { type: "output", data: "[dry-run] wrote app.json, package.json, App.tsx\n" };
+    yield { type: "output", data: "[dry-run] wrote app.json, package.json, App.js\n" };
     yield { type: "output", data: "[dry-run] done — Expo Go-safe, no native modules\n" };
     yield { type: "done", exitCode: 0 };
   },
@@ -43,10 +43,10 @@ function writeMinimalApp(dir: string, prompt: string): void {
         main: "index.js",
         scripts: { start: "expo start", android: "expo start --android", ios: "expo start --ios" },
         dependencies: {
-          expo: "~57.0.0",
-          "expo-status-bar": "~3.0.0",
-          react: "19.1.0",
-          "react-native": "0.81.5",
+          expo: "~57.0.15",
+          "expo-status-bar": "~57.0.1",
+          react: "19.2.3",
+          "react-native": "0.86.2",
         },
       },
       null,
@@ -82,7 +82,7 @@ registerRootComponent(App);
 
   const escaped = prompt.replace(/`/g, "\\`").replace(/\${/g, "\\${");
   fs.writeFileSync(
-    path.join(dir, "App.tsx"),
+    path.join(dir, "App.js"),
     `import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View } from "react-native";
 

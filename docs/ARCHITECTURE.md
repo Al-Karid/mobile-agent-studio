@@ -11,7 +11,7 @@ iPhone (cockpit)                         Mac (server, single Next.js process)
  4. status "qa…"          ──SSE──▶      tsc/lint + Expo Go-safe validation
  5. status "ready"        ──SSE──▶      done, committed — server idles
  6. tap "Launch"                          POST /api/projects/:id/launch → start Metro
- 7. Linking.openURL("exp://…") ──▶       Expo Go loads the bundle from Metro :8081
+ 7. Linking.openURL("exp://…") ──▶       Expo Go loads the bundle from Metro (dynamic port 8100+)
 ```
 
 The phone never receives the app — it receives a URL, and Expo Go loads the JS
@@ -23,7 +23,7 @@ every correction.
 1. **cockpit ↔ API** — HTTP REST (actions) + SSE (live status/logs).
 2. **API → coding agent** — local child process (headless CLI), stdin/stdout.
 3. **API → project dir** — file writes + git commits (checkpoints).
-4. **Expo Go ↔ Metro :8081** — HTTP bundle + WebSocket Fast Refresh.
+4. **Expo Go ↔ Metro (dynamic port 8100+)** — HTTP bundle + WebSocket Fast Refresh.
 
 Only link #1 is visible to the user. The validation sandbox (agent-device) was
 deliberately deferred — V1 uses **human visual validation** (the user is the

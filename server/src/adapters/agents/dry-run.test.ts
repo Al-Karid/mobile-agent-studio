@@ -20,7 +20,7 @@ test("dry-run writes a minimal, Expo Go-safe app", async () => {
   assert.ok(sawOutput, "expected output events");
 
   assert.ok(fs.existsSync(path.join(dir, "package.json")), "package.json missing");
-  assert.ok(fs.existsSync(path.join(dir, "App.tsx")), "App.tsx missing");
+  assert.ok(fs.existsSync(path.join(dir, "App.js")), "App.js missing");
   assert.ok(fs.existsSync(path.join(dir, "index.js")), "index.js missing");
 
   const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));

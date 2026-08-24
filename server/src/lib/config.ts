@@ -26,7 +26,9 @@ export const config = {
   defaultAgent: str("DEFAULT_AGENT", "cline"),
   defaultValidator: str("DEFAULT_VALIDATOR", "none"),
   port: int("PORT", 3000),
-  metroPort: int("METRO_PORT", 8081),
+  // Start of the dedicated Metro port range for GENERATED apps. The cockpit's
+  // dev Metro occupies 8081, so generated apps are allocated 8100+ dynamically.
+  metroPort: int("METRO_PORT", 8100),
   // Scoped under process.cwd(); turbopackIgnore keeps build tracing bounded
   // (otherwise Turbopack traces the whole repo, which breaks page-data collection).
   projectsDir: path.join(/* turbopackIgnore: true */ process.cwd(), str("PROJECTS_DIR", "projects")),
