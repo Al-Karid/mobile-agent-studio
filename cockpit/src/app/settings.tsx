@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -232,6 +233,18 @@ export default function SettingsScreen() {
     }
   }
 
+  /** Ask for confirmation before signing out (destructive action). */
+  function confirmSignOut() {
+    Alert.alert(
+      "Sign out?",
+      "You'll need to sign in again to manage your projects and provider keys.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log out", style: "destructive", onPress: () => signOut().catch(() => {}) },
+      ]
+    );
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -363,7 +376,7 @@ export default function SettingsScreen() {
           {user?.email ?? "Signed in"} · session stored in the iOS keychain
         </Text>
         <Pressable
-          onPress={() => signOut().catch(() => {})}
+          onPress={confirmSignOut}
           style={({ pressed }) => [styles.danger, pressed && styles.pressed]}
           accessibilityRole="button"
         >

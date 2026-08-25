@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useAuthStore } from "@/lib/auth-store";
 
 // Default dev account (seeded by the server on boot).
@@ -24,11 +25,21 @@ const DEFAULT_PASSWORD = "password1234";
  */
 export default function LoginScreen() {
   const { signIn, signUp } = useAuthStore();
+  const status = useAuthStore((s) => s.status);
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [email, setEmail] = useState(DEFAULT_EMAIL);
   const [password, setPassword] = useState(DEFAULT_PASSWORD);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stack.Protected unlocks the app screens when the status flips to
+  // signedIn, but it does NOT navigate away from the focused login screen on
+  // its own — so we explicitly replace it with the app root here.
+  useEffect(() => {
+    if (status === "signedIn") {
+      router.replace("/");
+    }
+  }, [status]);
 
   async function submit() {
     if (busy) return;
@@ -41,7 +52,8 @@ export default function LoginScreen() {
     try {
       if (mode === "signin") await signIn(email.trim(), password);
       else await signUp(email.trim(), password);
-      // The root layout's Stack.Protected guard swaps to the app automatically.
+      // signIn/signUp flip the store to signedIn → the effect above replaces
+      // this screen with the app root (Stack.Protected doesn't navigate on its own).
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

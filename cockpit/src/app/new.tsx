@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,10 +22,10 @@ import { SheetHeader } from "@/components/sheet-header";
 import { PlatformSelector } from "@/components/platform-selector";
 
 const AGENTS = [
-  { id: "dry-run", title: "Dry run", blurb: "Fast preview · no AI" },
-  { id: "cline", title: "Cline", blurb: "DeepSeek / OpenAI / Anthropic" },
-  { id: "codex", title: "Codex", blurb: "GPT · OpenAI" },
-  { id: "claude", title: "Claude", blurb: "Claude · Anthropic" },
+  { id: "dry-run", title: "Dry run" },
+  { id: "cline", title: "Cline" },
+  { id: "codex", title: "Codex" },
+  { id: "claude", title: "Claude" },
 ];
 
 /**
@@ -41,18 +40,45 @@ export default function NewProjectScreen() {
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agent, setAgent] = useState("dry-run");
+  // Agents the user has an API key for (dry-run never needs one).
+  const [enabledAgents, setEnabledAgents] = useState<Record<string, boolean>>({
+    "dry-run": true,
+    cline: false,
+    codex: false,
+    claude: false,
+  });
   const [platform, setPlatform] = useState<ProjectPlatform>("ios");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const promptRef = useRef<TextInput>(null);
 
-  // Pre-select the user's default agent (set in Settings) for this project.
+  // Pre-select the user's default agent (set in Settings) for this project,
+  // and disable agents that have no API key configured yet. An agent is only
+  // usable when the user saved a key for it (cline = the provider chosen in
+  // Settings); dry-run never needs a key.
   useEffect(() => {
     getProviderSettings()
-      .then((p) => setAgent(p.agent))
+      .then((p) => {
+        const enabled: Record<string, boolean> = {
+          "dry-run": true,
+          cline: Boolean(p.cline.keys[p.cline.provider]),
+          codex: Boolean(p.codex.key),
+          claude: Boolean(p.claude.key),
+        };
+        setEnabledAgents(enabled);
+        // Keep the current pick when usable; else the default agent if it has
+        // a key; else fall back to dry-run.
+        setAgent((current) =>
+          enabled[current] ? current : enabled[p.agent] ? p.agent : "dry-run"
+        );
+      })
       .catch(() => {});
   }, []);
+
+  // No AI agent is usable until the user saves at least one API key.
+  const noApiKeys =
+    !enabledAgents.cline && !enabledAgents.codex && !enabledAgents.claude;
 
   async function submit() {
     if (busy) return;
@@ -98,13 +124,8 @@ export default function NewProjectScreen() {
         }
       />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Fixed-height body (not scrollable) — compact layout sized to the sheet. */}
+      <View style={styles.body}>
         <View style={styles.field}>
           <Text style={styles.label}>Project name</Text>
           <TextInput
@@ -139,24 +160,30 @@ export default function NewProjectScreen() {
           <View style={styles.segmented}>
             {AGENTS.map((a) => {
               const active = agent === a.id;
+              const enabled = enabledAgents[a.id];
               return (
                 <Pressable
                   key={a.id}
                   onPress={() => setAgent(a.id)}
-                  style={[styles.segment, active && styles.segmentActive]}
+                  disabled={!enabled}
+                  style={[
+                    styles.segment,
+                    active && styles.segmentActive,
+                    !enabled && styles.segmentDisabled,
+                  ]}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ selected: active, disabled: !enabled }}
                 >
                   <Text style={[styles.segmentTitle, active && styles.segmentTitleActive]}>
                     {a.title}
-                  </Text>
-                  <Text style={[styles.segmentBlurb, active && styles.segmentBlurbActive]}>
-                    {a.blurb}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
+          {noApiKeys && (
+            <Text style={styles.agentHint}>Set an API Key to use an agent</Text>
+          )}
         </View>
 
         <View style={styles.field}>
@@ -170,7 +197,7 @@ export default function NewProjectScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -181,8 +208,8 @@ const styles = StyleSheet.create({
     // Transparent so the iOS 26 liquid glass shows through the sheet.
     backgroundColor: "transparent",
   },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 20 },
+  // Fixed-height (non-scrollable) body — sized to fit the sheet.
+  body: { flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20, gap: 14 },
   field: { gap: 8 },
   label: {
     fontSize: 12,
@@ -206,7 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111",
   },
-  textarea: { minHeight: 120, lineHeight: 20 },
+  textarea: { minHeight: 100, lineHeight: 20 },
   segmented: {
     flexDirection: "row",
     gap: 8,
@@ -218,16 +245,16 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 10,
     alignItems: "center",
   },
   segmentActive: { backgroundColor: "#111" },
+  segmentDisabled: { opacity: 0.4 },
   segmentTitle: { fontSize: 14, fontWeight: "700", color: "#374151" },
   segmentTitleActive: { color: "#fff" },
-  segmentBlurb: { marginTop: 2, fontSize: 11, color: "#9CA3AF" },
-  segmentBlurbActive: { color: "rgba(255,255,255,0.72)" },
+  agentHint: { fontSize: 12, color: "#9CA3AF", lineHeight: 16 },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
