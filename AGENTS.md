@@ -3,6 +3,9 @@
 This repo is an **agentic app-builder**: a cockpit (Expo app) + a backend that
 runs coding agents to generate Expo apps, then serves them to Expo Go.
 
+> **Read `docs/CONTEXT.md` first** — it holds the settled decisions, the rejected
+> alternatives, and the user's constraints. Don't re-litigate settled choices without asking.
+
 ## Repo layout
 
 ```
