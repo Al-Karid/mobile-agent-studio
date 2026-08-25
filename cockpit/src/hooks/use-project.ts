@@ -1,24 +1,26 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { getProject, type ProjectDetail } from "@/lib/api";
+import type { ProjectDetail } from "@/lib/api";
+import { useProjectStore } from "@/lib/project-store";
 
 /**
- * Shared project-detail loader + poller. Used by both the chat screen and the
- * settings screen — no screen re-implements the poll loop.
+ * Shared project-detail loader + poller, backed by the global Zustand store.
+ * Reads the prefetched detail synchronously so the screen renders with real
+ * state on the first frame (no load-time flip), then keeps polling to stay
+ * live. Used by both the chat screen and the settings screen.
  */
 export function useProject(id?: string) {
-  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const project = useProjectStore((s) => (id ? s.details[id] : undefined));
+  const refreshProject = useProjectStore((s) => s.refreshProject);
+  const setProjectDetail = useProjectStore((s) => s.setProjectDetail);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
-    getProject(id)
-      .then((p) => {
-        setProject(p);
-        setError(null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [id]);
+    refreshProject(id).catch((e) =>
+      setError(e instanceof Error ? e.message : String(e))
+    );
+  }, [id, refreshProject]);
 
   useFocusEffect(
     useCallback(() => {
@@ -28,5 +30,10 @@ export function useProject(id?: string) {
     }, [load])
   );
 
-  return { project, error, reload: load, setProject, setError };
+  const setProject = useCallback(
+    (p: ProjectDetail) => setProjectDetail(p),
+    [setProjectDetail]
+  );
+
+  return { project: project ?? null, error, reload: load, setProject, setError };
 }

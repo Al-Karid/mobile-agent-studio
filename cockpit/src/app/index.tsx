@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Link, useFocusEffect } from "expo-router";
-import { listProjects, type Project } from "@/lib/api";
+import { useProjectStore } from "@/lib/project-store";
+import type { Project } from "@/lib/api";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "#8a8f98",
@@ -17,18 +18,38 @@ const STATUS_COLORS: Record<string, string> = {
   interrupted: "#ff851b",
 };
 
+/** One project card — reads its live state from the shared store. */
+function ProjectCard({ item }: { item: Project }) {
+  const status = useProjectStore((s) => s.details[item.id]?.status ?? item.status);
+  const color = STATUS_COLORS[status] ?? "#999";
+
+  return (
+    <Link href={`/project/${item.id}`} asChild>
+      <Pressable style={styles.card}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={styles.name}>{item.name}</Text>
+          <View style={[styles.badge, { borderColor: color }]}>
+            <Text style={{ color, fontSize: 11 }}>{status}</Text>
+          </View>
+        </View>
+        <Text style={styles.prompt} numberOfLines={2}>
+          {item.prompt}
+        </Text>
+      </Pressable>
+    </Link>
+  );
+}
+
 export default function ProjectsScreen() {
-  const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const projects = useProjectStore((s) => s.projects);
+  const refreshProjects = useProjectStore((s) => s.refreshProjects);
 
   const load = useCallback(() => {
-    listProjects()
-      .then((p) => {
-        setProjects(p);
-        setError(null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+    refreshProjects().catch((e) =>
+      setError(e instanceof Error ? e.message : String(e))
+    );
+  }, [refreshProjects]);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,28 +70,7 @@ export default function ProjectsScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>
         }
-        renderItem={({ item }) => (
-          <Link href={`/project/${item.id}`} asChild>
-            <Pressable style={styles.card}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text style={styles.name}>{item.name}</Text>
-                <View
-                  style={[
-                    styles.badge,
-                    { borderColor: STATUS_COLORS[item.status] ?? "#999" },
-                  ]}
-                >
-                  <Text style={{ color: STATUS_COLORS[item.status] ?? "#999", fontSize: 11 }}>
-                    {item.status}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.prompt} numberOfLines={2}>
-                {item.prompt}
-              </Text>
-            </Pressable>
-          </Link>
-        )}
+        renderItem={({ item }) => <ProjectCard item={item} />}
       />
 
       <View style={styles.footer}>
