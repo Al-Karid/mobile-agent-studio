@@ -14,6 +14,7 @@ export type ProjectStatus =
   | "launching"
   | "launched"
   | "needs_dev_build"
+  | "awaiting_input"
   | "failed"
   | "interrupted";
 

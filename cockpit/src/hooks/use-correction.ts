@@ -37,19 +37,25 @@ export function useCorrection({ projectId, status }: UseCorrectionArgs) {
     setSending(false);
   }, [status]);
 
-  const applyChanges = useCallback(async () => {
-    if (!projectId || !correction.trim()) return;
-    setSending(true);
-    setError(null);
-    try {
-      await sendPrompt(projectId, correction.trim());
-      setCorrection("");
-      // The screen's poll picks up the status transition to "generating".
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setSending(false);
-    }
-  }, [projectId, correction]);
+  const applyChanges = useCallback(
+    async (text?: string) => {
+      // `text` is used by option chips on agent questions; otherwise the
+      // current input text is sent.
+      const value = text ?? correction;
+      if (!projectId || !value.trim()) return;
+      setSending(true);
+      setError(null);
+      try {
+        await sendPrompt(projectId, value.trim());
+        setCorrection("");
+        // The screen's poll picks up the status transition to "generating".
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        setSending(false);
+      }
+    },
+    [projectId, correction]
+  );
 
   return { correction, setCorrection, applyChanges, busy, sending, error };
 }

@@ -14,6 +14,6 @@ export const claudeAdapter: AgentAdapter = {
     return spawnToEvents("claude", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },
-    });
+    }, req.signal);
   },
 };

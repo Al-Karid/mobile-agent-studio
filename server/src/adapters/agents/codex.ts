@@ -14,6 +14,6 @@ export const codexAdapter: AgentAdapter = {
     return spawnToEvents("codex", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },
-    });
+    }, req.signal);
   },
 };

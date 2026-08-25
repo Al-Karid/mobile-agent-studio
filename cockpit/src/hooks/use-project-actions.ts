@@ -8,13 +8,17 @@ import {
 } from "@/lib/api";
 
 /**
- * Project lifecycle actions (launch / stop) for the details screen.
+ * Project lifecycle actions (open / stop) for the chat and settings screens.
  * Owns the in-flight flags and the polling needed to hand back an exp:// URL;
- * the screen renders and delegates — no feature logic inline.
+ * the screens render and delegate — no feature logic inline.
  */
 export interface UseProjectActionsArgs {
   /** Project id (may be undefined while the route param is still resolving). */
   projectId?: string;
+  /** Current project status, drives which action applies. */
+  status?: string;
+  /** Current exp:// URL (only present once the app was launched). */
+  expUrl?: string | null;
   /** Called with fresh project data whenever launch/stop observes a state change. */
   onProjectChange?: (p: ProjectDetail) => void;
   /** Called with a user-facing message on failure. */
@@ -23,15 +27,17 @@ export interface UseProjectActionsArgs {
 
 export function useProjectActions({
   projectId,
+  status,
+  expUrl,
   onProjectChange,
   onError,
 }: UseProjectActionsArgs) {
-  const [launching, setLaunching] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [stopping, setStopping] = useState(false);
 
-  const launch = useCallback(async () => {
+  const launchAndOpen = useCallback(async () => {
     if (!projectId) return;
-    setLaunching(true);
+    setOpening(true);
     try {
       await launchProject(projectId);
       // Poll until the server reports an exp:// URL, then open it in Expo Go.
@@ -41,7 +47,7 @@ export function useProjectActions({
         if (p.exp_url) {
           onProjectChange?.(p);
           await Linking.openURL(p.exp_url);
-          setLaunching(false);
+          setOpening(false);
           return;
         }
         if (p.status === "failed") throw new Error("launch failed");
@@ -49,9 +55,27 @@ export function useProjectActions({
       throw new Error("launch timed out");
     } catch (e) {
       onError?.(e instanceof Error ? e.message : String(e));
-      setLaunching(false);
+      setOpening(false);
     }
   }, [projectId, onProjectChange, onError]);
+
+  /** Open the app in Expo Go: run it first if it's stopped, else open directly. */
+  const open = useCallback(async () => {
+    if (!projectId) return;
+    if (status === "launched") {
+      if (expUrl) {
+        try {
+          await Linking.openURL(expUrl);
+        } catch (e) {
+          onError?.(e instanceof Error ? e.message : String(e));
+        }
+      }
+      return;
+    }
+    if (status === "ready") {
+      await launchAndOpen();
+    }
+  }, [projectId, status, expUrl, launchAndOpen, onError]);
 
   const stop = useCallback(async () => {
     if (!projectId) return;
@@ -67,5 +91,5 @@ export function useProjectActions({
     }
   }, [projectId, onProjectChange, onError]);
 
-  return { launching, stopping, launch, stop };
+  return { opening, stopping, open, stop };
 }

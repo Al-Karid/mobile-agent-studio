@@ -8,6 +8,12 @@ import { getValidator } from "@/adapters/validators";
 import { validateDeps } from "@/lib/expo-go";
 import { gitInit, gitCommit } from "@/lib/git";
 import { runCommand } from "@/lib/exec";
+import {
+  extractAgentQuestion,
+  extractAgentResponse,
+  formatQuestionMessage,
+  type AgentQuestion,
+} from "@/lib/agent-markers";
 import type { Project, ProjectStatus, Run } from "@/contracts/storage";
 
 /**
@@ -23,7 +29,11 @@ Hard rules:
 - Use expo-router for navigation and @expo/ui for native UI (sheets, pickers, toggles, menus) — never community libraries like @gorhom/bottom-sheet when @expo/ui provides it.
 - Only depend on packages in the Expo Go allow-list (expo-* modules + the official third-party list). If the user asks for something outside it, choose an Expo Go-safe alternative instead.
 - Run \`npx tsc --noEmit\` and fix all errors before finishing.
-- Never create or edit ios/ or android/ by hand (Continuous Native Generation).`;
+- Never create or edit ios/ or android/ by hand (Continuous Native Generation).
+
+Reporting:
+- When you finish the work, output a final line starting with \`AGENT_RESPONSE:\` followed by ONE concise, user-facing sentence summarizing what you changed (no markdown, no bullet lists). Example: \`AGENT_RESPONSE: Your app icon is now dark.\`
+- If you MUST ask the user something before continuing (a choice only they can make, e.g. which color, which name), STOP and output \`AGENT_QUESTION:\` + the question on one line, then \`OPTIONS:\` with one \`- option\` per line. Do NOT write any app files after asking.`;
 
 type Handler = (type: string, message: string) => Promise<void>;
 
@@ -55,21 +65,50 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
       DEEPSEEK_BASE_URL: config.deepseek.baseUrl,
       DEEPSEEK_MODEL: config.deepseek.model,
     };
+    const controller = new AbortController();
     let exitCode = 0;
+    let buffer = "";
+    let question: AgentQuestion | null = null;
     for await (const ev of adapter.run({
       projectDir: dir,
       prompt: run.input ?? project.prompt,
       context: AGENT_CONTEXT,
       env,
+      signal: controller.signal,
     })) {
       if (ev.type === "output") {
         await log(ev.data);
+        // Keep a rolling tail so the AGENT_* markers are found even when the
+        // output arrives split across chunks.
+        buffer = (buffer + ev.data).slice(-8000);
+        question = extractAgentQuestion(buffer);
+        if (question) {
+          controller.abort();
+          break;
+        }
       } else if (ev.type === "error") {
         await log(`[stderr] ${ev.data}`);
       } else if (ev.type === "done") {
         exitCode = ev.exitCode;
       }
     }
+
+    // The agent asked the user a question: journal it and wait for their
+    // answer (a new correction run). Don't QA/commit a half-built tree.
+    if (question) {
+      await storage.addEvent({
+        projectId,
+        runId: run.id,
+        type: "question",
+        message: formatQuestionMessage(question),
+      });
+      await storage.setProjectStatus(projectId, "awaiting_input");
+      await emit("status", "awaiting_input");
+      await storage.setRunStatus(run.id, "done");
+      return;
+    }
+
+    const agentResponse = extractAgentResponse(buffer);
     if (exitCode !== 0) {
       throw new Error(`agent exited with code ${exitCode}`);
     }
@@ -93,6 +132,16 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
     }
     if (!qa.typecheckOk) {
       throw new Error("typecheck failed — see run log");
+    }
+
+    // Journal the agent's concise response (shown as the chat's agent turn).
+    if (agentResponse) {
+      await storage.addEvent({
+        projectId,
+        runId: run.id,
+        type: "agent_response",
+        message: agentResponse,
+      });
     }
 
     // 4. commit + ready

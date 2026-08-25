@@ -17,7 +17,8 @@ export function commandExists(cmd: string): Promise<boolean> {
 export function spawnToEvents(
   cmd: string,
   args: string[],
-  opts: SpawnOptions
+  opts: SpawnOptions,
+  signal?: AbortSignal
 ): AsyncIterable<AgentEvent> {
   return {
     async *[Symbol.asyncIterator]() {
@@ -26,6 +27,13 @@ export function spawnToEvents(
       let closed = false;
       let notify: (() => void) | null = null;
 
+      const onAbort = () => {
+        // The orchestrator asked the agent to stop (e.g. it asked the user a
+        // question) — kill the child so the stream ends promptly.
+        child.kill("SIGTERM");
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+
       const push = (e: AgentEvent) => {
         queue.push(e);
         notify?.();
@@ -33,11 +41,13 @@ export function spawnToEvents(
       child.stdout?.on("data", (d: Buffer) => push({ type: "output", data: d.toString() }));
       child.stderr?.on("data", (d: Buffer) => push({ type: "error", data: d.toString() }));
       child.on("close", (code) => {
+        signal?.removeEventListener("abort", onAbort);
         push({ type: "done", exitCode: code ?? 1 });
         closed = true;
         notify?.();
       });
       child.on("error", (err) => {
+        signal?.removeEventListener("abort", onAbort);
         push({ type: "error", data: String(err) });
         push({ type: "done", exitCode: 1 });
         closed = true;

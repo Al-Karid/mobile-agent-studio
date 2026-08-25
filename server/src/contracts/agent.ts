@@ -13,6 +13,8 @@ export interface AgentRunRequest {
   context?: string;
   /** Environment passed to the agent process (API keys etc.). */
   env?: Record<string, string>;
+  /** Abort the agent mid-run (e.g. it asked the user a question). */
+  signal?: AbortSignal;
 }
 
 export type AgentEvent =

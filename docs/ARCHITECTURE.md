@@ -88,9 +88,15 @@ which streams far more tokens. Cache-hit input is ~30-60x cheaper than miss.
 ```
 created → initializing → generating → qa → ready → launching → launched
                                             │
-                                            ├→ needs_dev_build   (Expo Go-safe miss)
+                                            ├→ awaiting_input   (agent asked the user a question)
+                                            ├→ needs_dev_build  (Expo Go-safe miss)
                                             └→ failed / interrupted
 ```
+
+Chat turns: every `create`/`correct` run becomes a user turn (the prompt) + an
+agent turn (status steps + the journaled `agent_response` / `question` / `error`).
+Agent→user questions abort the run early (`awaiting_input`); answering queues a
+new `correct` run.
 
 ## TODO / open questions
 

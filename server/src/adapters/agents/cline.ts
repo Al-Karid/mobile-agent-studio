@@ -29,7 +29,7 @@ export const clineAdapter: AgentAdapter = {
     return spawnToEvents("cline", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },
-    });
+    }, req.signal);
   },
 };
 

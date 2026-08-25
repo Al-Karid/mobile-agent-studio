@@ -23,6 +23,7 @@ export const dryRunAdapter: AgentAdapter = {
 
     yield { type: "output", data: "[dry-run] wrote app.json, package.json, App.js\n" };
     yield { type: "output", data: "[dry-run] done — Expo Go-safe, no native modules\n" };
+    yield { type: "output", data: "AGENT_RESPONSE: Done — a minimal Expo Go-safe app is ready to run.\n" };
     yield { type: "done", exitCode: 0 };
   },
 };

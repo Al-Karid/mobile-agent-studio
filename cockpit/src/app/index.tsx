@@ -12,6 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
   launching: "#f5a623",
   launched: "#4aa3ff",
   needs_dev_build: "#ff4136",
+  awaiting_input: "#8b5cf6",
   failed: "#ff4136",
   interrupted: "#ff851b",
 };
