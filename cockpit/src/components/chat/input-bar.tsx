@@ -53,7 +53,7 @@ export function ChatInputBar({
           editable={!busy && enabled}
         />
         <Pressable
-          onPress={onSend}
+          onPress={() => onSend()}
           disabled={disabled || busy}
           accessibilityLabel={enabled ? "Send prompt" : "Locked — set an API key"}
           style={[styles.send, disabled && styles.sendDisabled]}

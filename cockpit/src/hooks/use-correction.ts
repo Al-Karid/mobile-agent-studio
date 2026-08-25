@@ -39,9 +39,9 @@ export function useCorrection({ projectId, status }: UseCorrectionArgs) {
 
   const applyChanges = useCallback(
     async (text?: string) => {
-      // `text` is used by option chips on agent questions; otherwise the
-      // current input text is sent.
-      const value = text ?? correction;
+      // `text` is used by option chips on agent questions (explicit strings);
+      // anything else (e.g. a press event) means "use the current input".
+      const value = typeof text === "string" ? text : correction;
       if (!projectId || !value.trim()) return;
       setSending(true);
       setError(null);
