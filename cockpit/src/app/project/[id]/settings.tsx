@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { useProjectStore } from "@/lib/project-store";
-import { updateProjectAgent } from "@/lib/api";
+import {
+  getProject,
+  killServer,
+  listServers,
+  updateProjectAgent,
+  type ServerInstance,
+} from "@/lib/api";
 import { noApiKeys, useAgentAvailability } from "@/lib/agent-keys";
 import { statusColor, statusLabel } from "@/lib/status";
 import { ongoingEventId } from "@/lib/events";
@@ -125,11 +132,70 @@ export default function ProjectSettingsScreen() {
     }
   }
 
+  // Live app server (Metro) for THIS project — refreshed whenever this screen
+  // gains focus, and after a kill, so it always reflects reality.
+  const [servers, setServers] = useState<ServerInstance[]>([]);
+  const [killingId, setKillingId] = useState<string | null>(null);
+  const refreshServers = useCallback(() => {
+    if (!id) return;
+    let cancelled = false;
+    listServers(id)
+      .then((s) => {
+        if (!cancelled) setServers(s);
+      })
+      .catch(() => {
+        /* server unreachable — keep the last known list */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+  useFocusEffect(refreshServers);
+
+  async function killServerInstance(projectId: string) {
+    setKillingId(projectId);
+    try {
+      await killServer(projectId);
+      // A kill may reset THIS project's "launched" state — refresh both.
+      await refreshServers?.();
+      if (project && project.id === projectId) {
+        const fresh = await getProject(projectId);
+        setProject(fresh);
+      }
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setKillingId(null);
+    }
+  }
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: headerTopInset + 16 }]}
-    >
+    <>
+      {/* Stop lives in the header (right), only while the app is launched. */}
+      <Stack.Screen
+        options={{
+          headerRight: () =>
+            running ? (
+              <HeaderButton
+                onPress={actions.stop}
+                disabled={actions.stopping}
+                accessibilityLabel="Stop app"
+                testID="stop-app-button"
+              >
+                {actions.stopping ? (
+                  <ActivityIndicator size="small" color="#ff3b30" />
+                ) : (
+                  <Ionicons name="stop" size={22} color="#ff3b30" />
+                )}
+              </HeaderButton>
+            ) : null,
+        }}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingTop: headerTopInset + 16 }]}
+      >
       {/* Header: project name + status pill */}
       <View style={styles.header}>
         <Text style={styles.name} numberOfLines={1}>
@@ -141,25 +207,6 @@ export default function ProjectSettingsScreen() {
           </Text>
         </View>
       </View>
-
-      {running && (
-        <Pressable
-          onPress={actions.stop}
-          disabled={actions.stopping}
-          style={({ pressed }) => [
-            styles.stopButton,
-            pressed && styles.pressed,
-            actions.stopping && styles.stopDisabled,
-          ]}
-          accessibilityRole="button"
-        >
-          {actions.stopping ? (
-            <ActivityIndicator color="#ff4136" />
-          ) : (
-            <Text style={styles.stopText}>Stop app</Text>
-          )}
-        </Pressable>
-      )}
 
       {/* Details */}
       <View style={styles.card}>
@@ -238,9 +285,13 @@ export default function ProjectSettingsScreen() {
             {project?.exp_url && (
               <>
                 <View style={styles.divider} />
-                <Pressable onPress={() => Linking.openURL(project.exp_url!).catch(() => {})}>
-                  <InfoRow label="Expo URL" value={project.exp_url} mono accent />
-                </Pressable>
+                {running ? (
+                  <Pressable onPress={() => Linking.openURL(project.exp_url!).catch(() => {})}>
+                    <InfoRow label="Expo URL" value={project.exp_url} mono accent />
+                  </Pressable>
+                ) : (
+                  <InfoRow label="Expo URL" value={project.exp_url} mono />
+                )}
               </>
             )}
           </>
@@ -274,6 +325,11 @@ export default function ProjectSettingsScreen() {
                   type={e.type}
                   message={e.message}
                   ongoing={ongoingId === e.id}
+                  live={
+                    project?.status === "launched" &&
+                    e.type === "ready" &&
+                    e.message === project.exp_url
+                  }
                 />
               ))
             )}
@@ -281,10 +337,52 @@ export default function ProjectSettingsScreen() {
         )}
       </View>
 
+      {/* Live app server — the Metro instance currently serving this app */}
+      <View style={styles.card}>
+        <CardHeader>Live app server</CardHeader>
+        <Text style={styles.hint}>
+          The app server currently serving this project. Kill it to stop
+          serving the app.
+        </Text>
+        {servers.length === 0 ? (
+          <Text style={styles.empty}>No app server running.</Text>
+        ) : (
+          servers.map((s) => (
+            <View key={s.projectId} style={styles.serverRow}>
+              <View style={styles.serverInfo}>
+                <Text style={styles.serverName} numberOfLines={1}>
+                  {s.name}
+                </Text>
+                <Text style={[styles.serverMeta, styles.mono]} numberOfLines={1}>
+                  exp://…:{s.port}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => killServerInstance(s.projectId)}
+                disabled={killingId === s.projectId}
+                style={({ pressed }) => [
+                  styles.killButton,
+                  pressed && styles.pressed,
+                  killingId === s.projectId && styles.stopDisabled,
+                ]}
+                accessibilityRole="button"
+              >
+                {killingId === s.projectId ? (
+                  <ActivityIndicator size={12} color="#ff4136" />
+                ) : (
+                  <Text style={styles.killText}>Kill</Text>
+                )}
+              </Pressable>
+            </View>
+          ))
+        )}
+      </View>
+
       <DangerZone onDelete={actions.remove} removing={actions.removing} />
 
       {error && <Text style={styles.error}>{error}</Text>}
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
@@ -347,19 +445,24 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.4 },
   primaryText: { color: "#fff", fontWeight: "700" },
-  stopButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#ff4136",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  stopText: { color: "#ff4136", fontWeight: "600" },
   stopDisabled: { opacity: 0.4 },
   pressed: { opacity: 0.8 },
+  serverRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  serverInfo: { flex: 1, gap: 2 },
+  serverName: { fontSize: 14, fontWeight: "600", color: "#111" },
+  serverMeta: { fontSize: 12, color: "#6B7280" },
+  killButton: {
+    borderWidth: 1,
+    borderColor: "#ff4136",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  killText: { color: "#ff4136", fontWeight: "600", fontSize: 13 },
   error: { color: "#c00", fontSize: 13 },
 });

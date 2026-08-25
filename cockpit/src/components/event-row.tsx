@@ -41,11 +41,14 @@ export function EventRow({
   message,
   ongoing = false,
   error = false,
+  live = false,
 }: {
   type: string;
   message: string;
   ongoing?: boolean;
   error?: boolean;
+  /** exp:// rows are tappable ONLY when the instance is live (server running). */
+  live?: boolean;
 }) {
   const ic = eventIcon(type, message);
   // Status rows show the humanized label ("generating" → "Building"); the raw
@@ -62,7 +65,7 @@ export function EventRow({
           color={error ? "#c00" : ic.color}
         />
       )}
-      {message.startsWith("exp://") ? (
+      {message.startsWith("exp://") && live ? (
         <LinkText url={message} style={styles.msg}>
           {message}
         </LinkText>

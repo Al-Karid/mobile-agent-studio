@@ -33,6 +33,8 @@ export function LaunchStack({
   const ongoing = events.some((e) => e.ongoing);
   const count = launches.length;
   const label = count > 1 ? `App launched ×${count}` : "App launched";
+  // Only the NEWEST exp:// in a live stack is tappable — killed URLs are dead.
+  const lastLaunchUrl = launches[launches.length - 1]?.message;
   // Reflect the CURRENT state of the group: the last event decides "stopped".
   const lastEvent = events[events.length - 1];
   const isStopped = lastEvent?.message === "App stopped";
@@ -79,7 +81,13 @@ export function LaunchStack({
       {expanded && (
         <View style={styles.body}>
           {events.map((e) => (
-            <EventRow key={e.id} type={e.type} message={e.message} ongoing={e.ongoing} />
+            <EventRow
+              key={e.id}
+              type={e.type}
+              message={e.message}
+              ongoing={e.ongoing}
+              live={running && e.type === "ready" && e.message === lastLaunchUrl}
+            />
           ))}
         </View>
       )}

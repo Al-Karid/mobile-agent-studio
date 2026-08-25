@@ -222,6 +222,33 @@ export async function stopProject(id: string): Promise<{ project: Project }> {
   return json(res);
 }
 
+/** A live app server (Metro) instance serving a project's app. */
+export interface ServerInstance {
+  projectId: string;
+  name: string;
+  port: number;
+  expUrl: string;
+}
+
+/**
+ * Live app servers across the user's projects — or, when `projectId` is given,
+ * only that project's server (0 or 1 entries). Ownership is enforced server-side.
+ */
+export async function listServers(projectId?: string): Promise<ServerInstance[]> {
+  const q = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+  const res = await fetch(`${await base()}/api/servers${q}`, await withAuth());
+  return (await json<{ servers: ServerInstance[] }>(res)).servers;
+}
+
+/** Kill a running app server (Metro) for a project. */
+export async function killServer(projectId: string): Promise<void> {
+  const res = await fetch(
+    `${await base()}/api/servers/${encodeURIComponent(projectId)}`,
+    { method: "POST", ...(await withAuth()) }
+  );
+  await json<{ ok: boolean }>(res);
+}
+
 /** Change the project's agent (project settings → Agent). */
 export async function updateProjectAgent(id: string, agent: string): Promise<Project> {
   const res = await fetch(`${await base()}/api/projects/${id}`, {
