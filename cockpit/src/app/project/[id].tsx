@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
 import { useChat } from "@/hooks/use-chat";
@@ -33,6 +34,27 @@ export default function ProjectChatScreen() {
 
   return (
     <View style={styles.container}>
+      {/* background gradient: full screen, perfectly gradual #ffffff → #f5f5f5 */}
+      <LinearGradient
+        colors={[
+          "#ffffff",
+          "#fefefe",
+          "#fdfdfd",
+          "#fcfcfc",
+          "#fbfbfb",
+          "#fafafa",
+          "#f9f9f9",
+          "#f8f8f8",
+          "#f7f7f7",
+          "#f6f6f6",
+          "#f5f5f5",
+          "#f4f4f4",
+          "#f3f3f3",
+        ]}
+        style={styles.gradient}
+        pointerEvents="none"
+      />
+
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -94,6 +116,15 @@ export default function ProjectChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  // Full-screen gradient: #ffffff at the top → #f5f5f5 at the bottom
+  // (bottom appears darker than the top two-thirds).
+  gradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   bar: {
     flexDirection: "row",
     alignItems: "center",
