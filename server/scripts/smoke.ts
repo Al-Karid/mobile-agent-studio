@@ -20,6 +20,7 @@ async function main() {
     prompt,
     agent: "dry-run",
     model: "deepseek-v4-flash",
+    platform: "ios",
   });
   const run = await storage.createRun({
     projectId: id,

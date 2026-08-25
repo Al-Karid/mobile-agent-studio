@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS ${t("projects")} (
   metro_port ${t("metro_port")},
   agent TEXT NOT NULL DEFAULT 'cline',
   model TEXT NOT NULL DEFAULT 'deepseek-v4-flash',
+  platform TEXT NOT NULL DEFAULT 'ios',
   created_at ${big} NOT NULL,
   updated_at ${big} NOT NULL
 )`;

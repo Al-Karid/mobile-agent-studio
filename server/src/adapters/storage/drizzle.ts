@@ -74,6 +74,7 @@ class DrizzleStorageAdapter implements StorageAdapter {
     prompt: string;
     agent: string;
     model: string;
+    platform: "ios" | "android" | "both";
   }): Promise<Project> {
     await this.ensureSchema();
     const t = Date.now();
@@ -86,6 +87,7 @@ class DrizzleStorageAdapter implements StorageAdapter {
       metro_port: null,
       agent: p.agent,
       model: p.model,
+      platform: p.platform,
       created_at: t,
       updated_at: t,
     });

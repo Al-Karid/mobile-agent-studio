@@ -33,6 +33,24 @@ function relativeTime(ts: number): string {
   return formatDate(ts);
 }
 
+/** Compact platform badge — iOS / Android / Both. */
+function PlatformBadge({ platform }: { platform: string }) {
+  const ios = platform === "ios" || platform === "both";
+  const android = platform === "android" || platform === "both";
+  const label =
+    platform === "both" ? "Both" : platform === "android" ? "Android" : "iOS";
+  const color =
+    platform === "android" ? "#3DDC84" : platform === "both" ? "#6d28d9" : "#111111";
+
+  return (
+    <View style={styles.platformChip}>
+      {ios && <Ionicons name="logo-apple" size={11} color={color} />}
+      {android && <Ionicons name="logo-android" size={11} color={color} />}
+      <Text style={[styles.platformText, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
 /**
  * One project card — reads its live state from the shared store, so the list
  * reflects generation/launch progress without navigating.
@@ -67,6 +85,7 @@ export function ProjectCard({ item }: { item: Project }) {
 
         <View style={styles.footer}>
           <View style={styles.metaGroup}>
+            <PlatformBadge platform={item.platform ?? "ios"} />
             {AGENT_LABEL[item.agent] && (
               <View style={styles.agentChip}>
                 <Ionicons
@@ -108,6 +127,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   metaGroup: { flexDirection: "row", alignItems: "center", gap: 5 },
+  platformChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F2F2F4",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  platformText: { fontSize: 12, fontWeight: "600" },
   agentChip: {
     flexDirection: "row",
     alignItems: "center",

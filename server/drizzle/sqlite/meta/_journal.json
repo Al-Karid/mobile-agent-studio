@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787675281850,
+      "tag": "0000_sour_blacklash",
+      "breakpoints": true
+    }
+  ]
+}

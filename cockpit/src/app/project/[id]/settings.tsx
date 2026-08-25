@@ -107,6 +107,17 @@ export default function ProjectSettingsScreen() {
         <InfoRow label="Name" value={project?.name ?? "—"} />
         <View style={styles.divider} />
         <InfoRow
+          label="Platform"
+          value={
+            project?.platform === "both"
+              ? "iOS + Android"
+              : project?.platform === "android"
+                ? "Android"
+                : "iOS"
+          }
+        />
+        <View style={styles.divider} />
+        <InfoRow
           label="Created"
           value={project ? new Date(project.created_at).toLocaleString() : "—"}
         />

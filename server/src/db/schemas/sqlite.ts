@@ -15,6 +15,7 @@ export const projects = sqliteTable(
     metro_port: integer("metro_port"),
     agent: text("agent").notNull().default("cline"),
     model: text("model").notNull().default("deepseek-v4-flash"),
+    platform: text("platform").notNull().default("ios"),
     created_at: integer("created_at").notNull(),
     updated_at: integer("updated_at").notNull(),
   }

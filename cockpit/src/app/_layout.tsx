@@ -29,7 +29,7 @@ export default function RootLayout() {
             presentation: "formSheet",
             gestureEnabled: false,
             sheetGrabberVisible: false,
-            sheetAllowedDetents: [0.55],
+            sheetAllowedDetents: [0.68],
             sheetInitialDetentIndex: 0,
             // transparent content lets the iOS 26 liquid glass show through
             contentStyle: { backgroundColor: "transparent" },

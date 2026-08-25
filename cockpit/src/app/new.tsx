@@ -18,8 +18,9 @@ import {
   disabled,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import { createProject } from "@/lib/api";
+import { createProject, type ProjectPlatform } from "@/lib/api";
 import { SheetHeader } from "@/components/sheet-header";
+import { PlatformSelector } from "@/components/platform-selector";
 
 const AGENTS = [
   { id: "dry-run", title: "Dry run", blurb: "Fast local preview · no AI" },
@@ -38,6 +39,7 @@ export default function NewProjectScreen() {
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agent, setAgent] = useState("dry-run");
+  const [platform, setPlatform] = useState<ProjectPlatform>("ios");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +54,7 @@ export default function NewProjectScreen() {
     setBusy(true);
     setError(null);
     try {
-      await createProject({ name: name.trim(), prompt: prompt.trim(), agent });
+      await createProject({ name: name.trim(), prompt: prompt.trim(), agent, platform });
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -146,6 +148,11 @@ export default function NewProjectScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Platform</Text>
+          <PlatformSelector value={platform} onChange={setPlatform} />
         </View>
 
         {error && (

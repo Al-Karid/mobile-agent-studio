@@ -1,5 +1,7 @@
 import { getApiUrl } from "./settings";
 
+export type ProjectPlatform = "ios" | "android" | "both";
+
 export interface Project {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ export interface Project {
   exp_url: string | null;
   agent: string;
   model: string;
+  platform: ProjectPlatform;
   created_at: number;
   updated_at: number;
 }
@@ -62,6 +65,7 @@ export async function createProject(input: {
   name: string;
   prompt: string;
   agent?: string;
+  platform?: ProjectPlatform;
 }): Promise<{ project: Project; run: Run }> {
   const res = await fetch(`${await base()}/api/projects`, {
     method: "POST",

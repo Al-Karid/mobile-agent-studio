@@ -27,6 +27,8 @@ export interface Project {
   metro_port: number | null;
   agent: string;
   model: string;
+  /** Target platform for the generated app. Android isn't supported yet. */
+  platform: "ios" | "android" | "both";
   created_at: number;
   updated_at: number;
 }
@@ -63,6 +65,7 @@ export interface StorageAdapter {
     prompt: string;
     agent: string;
     model: string;
+    platform: "ios" | "android" | "both";
   }): Promise<Project>;
   getProject(id: string): Promise<Project | undefined>;
   listProjects(): Promise<Project[]>;

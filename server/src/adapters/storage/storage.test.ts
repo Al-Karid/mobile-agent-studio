@@ -20,9 +20,11 @@ async function runContract(s: StorageAdapter): Promise<void> {
     prompt: "a test app",
     agent: "dry-run",
     model: "deepseek-v4-flash",
+    platform: "ios",
   });
   assert.equal(p.status, "created");
   assert.equal(p.exp_url, null);
+  assert.equal(p.platform, "ios");
   await s.setProjectStatus("p1", "ready");
   assert.equal((await s.getProject("p1"))?.status, "ready");
 
