@@ -24,7 +24,7 @@ generated dependency must be in Expo Go, otherwise the app is flagged, never shi
 
 | Decision | Rationale | Rejected alternative |
 |---|---|---|
-| Next.js + SQLite (better-sqlite3) | server doubles as an admin web UI (global admin + client); one process, one file | bare Node; PostgreSQL/Redis (overkill for one Mac, one user) |
+| Next.js + SQLite (Drizzle multi-dialect) | server doubles as an admin web UI (global admin + client); one process, one file by default; `DATABASE_DRIVER=sqlite|postgres|mysql` makes the DB an env switch at deploy time | bare Node; PostgreSQL/Redis (overkill for one Mac, one user) |
 | Ports & adapters (no plugin framework) | ~30-line registry + stable contracts; a new provider = one ~50-100 line adapter | dynamic plugin marketplace |
 | Single-process async queue | V1 = one Mac, one user; SQLite is source of truth + git checkpoints | Redis/BullMQ |
 | Human visual validation (validator "none") | keeps the backend 100% portable (no macOS simulator); the user is the observer | agent-device (Expo's automated device validator) — deferred |

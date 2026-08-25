@@ -7,7 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import * as db from "../src/lib/db";
+import { storage } from "../src/adapters/storage";
 import { config } from "../src/lib/config";
 import { runGenerateJob } from "../src/jobs/generate";
 import { runLaunchJob } from "../src/jobs/launch";
@@ -20,38 +20,38 @@ async function main() {
   let ok = false;
 
   try {
-    const project = db.createProject({
+    const project = await storage.createProject({
       id,
       name: "launchtest",
       prompt,
       agent: "dry-run",
       model: "deepseek-v4-flash",
     });
-    const genRun = db.createRun({
+    const genRun = await storage.createRun({
       projectId: id,
       kind: "create",
       input: prompt,
       agent: "dry-run",
       model: "deepseek-v4-flash",
     });
-    db.setRunStatus(genRun.id, "running");
+    await storage.setRunStatus(genRun.id, "running");
     await runGenerateJob(genRun, project);
 
-    const afterGen = db.getProject(id)!;
-    console.log("generate ->", afterGen.status);
-    if (afterGen.status !== "ready") throw new Error("generate did not reach ready");
+    const afterGen = await storage.getProject(id);
+    console.log("generate ->", afterGen?.status);
+    if (afterGen?.status !== "ready") throw new Error("generate did not reach ready");
 
-    const launchRun = db.createRun({ projectId: id, kind: "launch", agent: "dry-run" });
-    db.setRunStatus(launchRun.id, "running");
+    const launchRun = await storage.createRun({ projectId: id, kind: "launch", agent: "dry-run" });
+    await storage.setRunStatus(launchRun.id, "running");
     await runLaunchJob(launchRun, afterGen);
 
-    const afterLaunch = db.getProject(id)!;
-    const port = afterLaunch.metro_port ?? 0;
-    console.log("launch   ->", afterLaunch.status);
-    console.log("exp_url  ->", afterLaunch.exp_url);
+    const afterLaunch = await storage.getProject(id);
+    const port = afterLaunch?.metro_port ?? 0;
+    console.log("launch   ->", afterLaunch?.status);
+    console.log("exp_url  ->", afterLaunch?.exp_url);
     console.log("port     ->", port);
 
-    if (afterLaunch.status !== "launched" || !afterLaunch.exp_url) {
+    if (afterLaunch?.status !== "launched" || !afterLaunch.exp_url) {
       throw new Error("launch did not complete");
     }
     if (port < 8100 || port >= 9000) {
@@ -64,7 +64,7 @@ async function main() {
   } finally {
     stopMetro(id);
     fs.rmSync(dir, { recursive: true, force: true });
-    db.deleteProject(id);
+    await storage.deleteProject(id);
   }
 
   process.exit(ok ? 0 : 1);

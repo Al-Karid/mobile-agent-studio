@@ -71,8 +71,12 @@ which streams far more tokens. Cache-hit input is ~30-60x cheaper than miss.
 
 - **Next.js** (not bare Node): the server doubles as an admin web UI (global admin +
   client view), and matches the user's stack. One process, one SQLite file.
-- **better-sqlite3** (not an ORM): synchronous, zero-config, matches the proven
-  "centralized internal app" pattern.
+- **Drizzle multi-dialect storage (was: better-sqlite3, not an ORM)**: the user
+  wants the DB to be an `.env` switch at deploy time (`DATABASE_DRIVER=sqlite |
+  postgres | mysql`). Drizzle is a headless query builder, not a heavy ORM —
+  one schema per dialect, no runtime ORM tax. Swapping the underlying DB is a
+  config change, never a code change; the orchestrator only talks to
+  `contracts/storage.ts`.
 - **Single-process queue** (no Redis): V1 runs on one Mac for one user.
 - **Human validation only** (no agent-device): removes the macOS/simulator dependency,
   keeps V1 portable. Re-add via `ValidatorAdapter` later.

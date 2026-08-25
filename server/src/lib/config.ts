@@ -25,6 +25,10 @@ export const config = {
   },
   defaultAgent: str("DEFAULT_AGENT", "cline"),
   defaultValidator: str("DEFAULT_VALIDATOR", "none"),
+  // Storage backend (Drizzle): sqlite | postgres | mysql. Swapping the DB is a
+  // .env change — the orchestrator only talks to the StorageAdapter contract.
+  storage: str("DATABASE_DRIVER", "sqlite"),
+  databaseUrl: str("DATABASE_URL", path.join(process.cwd(), "data", "studio.db")),
   port: int("PORT", 3000),
   // Start of the dedicated Metro port range for GENERATED apps. The cockpit's
   // dev Metro occupies 8081, so generated apps are allocated 8100+ dynamically.

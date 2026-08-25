@@ -78,15 +78,16 @@ pass. Order is by priority/risk, not by effort.
       string: adapter spawns, no `E2BIG`).
     - [ ] `npm test` green.
 
-- [ ] **6. Run-log truncation keeps head + tail, not just tail**
+- [x] **6. Run-log truncation keeps head + tail, not just tail**
   - Problem: `appendRunLog` keeps only the last ~100KB; the create-expo-app /
     agent startup output (what you debug first) is the first thing lost.
   - Fix: keep first ~20KB + last ~80KB with a marker line.
-  - Touch: `server/src/lib/db.ts`.
+  - Touch: `server/src/lib/run-log.ts` (pure `capRunLog`, used by all storage
+    adapters — also DB-agnostic now that storage is behind Drizzle).
   - Acceptance:
-    - [ ] Unit test: append > 100KB → log contains the head text *and* the tail
+    - [x] Unit test: append > 100KB → log contains the head text *and* the tail
       text.
-    - [ ] `npm test` green.
+    - [x] `npm test` green.
 
 - [ ] **7. Align docs with the actual checkpoint behavior**
   - Problem: AGENTS.md / ARCHITECTURE.md say "each step is a git commit /

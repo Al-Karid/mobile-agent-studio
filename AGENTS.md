@@ -23,6 +23,8 @@ docs/      Architecture & design notes
    Swap anything behind a stable contract:
    - `contracts/agent.ts` → `adapters/agents/*` (cline, codex, claude, dry-run)
    - `contracts/validator.ts` → `adapters/validators/*` (none = human, …)
+   - `contracts/storage.ts` → `adapters/storage/*` (Drizzle over
+     sqlite/postgres/mysql — `DATABASE_DRIVER` in `.env` is the only switch)
    - model/provider → `.env` + config (OpenAI-compatible, DeepSeek by default)
 3. **No long-lived request/agent session.** Every user action creates a *run* in SQLite
    and returns immediately (`202`). A background job executes it; the client follows
@@ -66,7 +68,10 @@ cline -c <dir> -P deepseek -m deepseek-v4-flash --thinking none --json "<prompt>
 - TypeScript everywhere. `npm run build` is the source of truth for the server.
 - Async jobs are single-process for V1 (no Redis/BullMQ). See `server/src/lib/queue.ts`.
 - Never commit secrets. `.env` is gitignored; `.env.example` documents the shape.
-- DB access goes through `server/src/lib/db.ts` functions, never raw SQL from outside.
+- DB access goes through the storage contract — `contracts/storage.ts` →
+  `adapters/storage/*` (Drizzle; `DATABASE_DRIVER=sqlite|postgres|mysql`).
+  Never touch a DB driver directly outside an adapter. Schema bootstrap is
+  `src/db/ddl.ts`; production schema changes use `npm run db:generate` / `db:push`.
 - **Never build features inline.** A feature lives in a dedicated module —
   stateful logic → `cockpit/src/hooks/*`, API/pure logic → `cockpit/src/lib/*`,
   reusable UI → `cockpit/src/components/*`. Screens/routes orchestrate; they

@@ -1,6 +1,7 @@
-import * as db from "@/lib/db";
+import { storage } from "@/adapters/storage";
 import { runGenerateJob } from "@/jobs/generate";
 import { runLaunchJob } from "@/jobs/launch";
+import type { Run } from "@/contracts/storage";
 
 /**
  * Single-process job queue (V1). On boot, orphaned "running" runs are marked
@@ -14,13 +15,15 @@ export function startQueue(): void {
   if (started) return;
   started = true;
 
-  db.recoverInterrupted();
-  setImmediate(loop);
+  storage
+    .recoverInterrupted()
+    .catch((e) => console.error("[queue] recoverInterrupted failed:", e));
+  setImmediate(() => void loop());
 }
 
 async function loop(): Promise<void> {
   for (;;) {
-    const run = db.nextPendingRun();
+    const run = await storage.nextPendingRun();
     if (!run) {
       await sleep(1500);
       continue;
@@ -29,14 +32,14 @@ async function loop(): Promise<void> {
   }
 }
 
-async function execute(run: db.Run): Promise<void> {
-  const project = db.getProject(run.project_id);
+async function execute(run: Run): Promise<void> {
+  const project = await storage.getProject(run.project_id);
   if (!project) {
-    db.setRunStatus(run.id, "failed");
+    await storage.setRunStatus(run.id, "failed");
     return;
   }
 
-  db.setRunStatus(run.id, "running");
+  await storage.setRunStatus(run.id, "running");
 
   if (run.kind === "launch") {
     await runLaunchJob(run, project);

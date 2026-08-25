@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3 is a native N-API module — must not be bundled.
-  serverExternalPackages: ["better-sqlite3"],
+  // Native / driver modules must not be bundled by Turbopack.
+  serverExternalPackages: ["better-sqlite3", "pg", "mysql2"],
 };
 
 export default nextConfig;
