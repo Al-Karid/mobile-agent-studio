@@ -75,7 +75,7 @@ export default function LoginScreen() {
             <View style={styles.logo}>
               <Ionicons name="construct" size={26} color="#fff" />
             </View>
-            <Text style={styles.title}>Mobile Agent Studio</Text>
+            <Text style={styles.title}>CockPit</Text>
             <Text style={styles.subtitle}>
               Describe an app — an AI agent builds it, then launches it in Expo Go.
             </Text>
