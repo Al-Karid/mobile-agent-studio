@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import {
   Button,
   ConfirmationDialog,
@@ -17,94 +17,87 @@ interface DangerZoneProps {
 }
 
 /**
- * Collapsible destructive section: only the red "Danger zone" label is visible
- * until tapped, then the actual delete control + native confirmation dialog
- * are revealed. Confirmation and state live here; the caller just supplies the
- * delete callback.
+ * Destructive section styled like the other settings cards: always visible,
+ * with the native delete button + confirmation dialog. Confirmation state
+ * lives here; the caller just supplies the delete callback.
  */
 export function DangerZone({ onDelete, removing = false }: DangerZoneProps) {
-  const [expanded, setExpanded] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        onPress={() => setExpanded((v) => !v)}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-      >
-        <Text style={styles.section}>Danger zone</Text>
-      </Pressable>
-
-      {expanded && (
-        <View style={styles.box}>
-          <Host style={styles.deleteHost} matchContents>
-            <ConfirmationDialog
-              title="Delete project?"
-              isPresented={confirmVisible}
-              onIsPresentedChange={setConfirmVisible}
+    <View style={styles.card}>
+      <Text style={styles.header}>Danger zone</Text>
+      <View style={styles.divider} />
+      <Host style={styles.deleteHost}>
+        <ConfirmationDialog
+          title="Delete project?"
+          isPresented={confirmVisible}
+          onIsPresentedChange={setConfirmVisible}
+        >
+          <ConfirmationDialog.Trigger>
+            <Button
+              onPress={() => setConfirmVisible(true)}
+              modifiers={[
+                buttonStyle("bordered"),
+                tint("#ff4136"),
+                disabled(removing),
+              ]}
             >
-              <ConfirmationDialog.Trigger>
-                <Button
-                  onPress={() => setConfirmVisible(true)}
-                  modifiers={[
-                    buttonStyle("bordered"),
-                    tint("#ff4136"),
-                    disabled(removing),
-                  ]}
-                >
-                  {removing ? <ProgressView /> : <SwiftText>Delete project</SwiftText>}
-                </Button>
-              </ConfirmationDialog.Trigger>
-              <ConfirmationDialog.Message>
-                <SwiftText>
-                  This permanently deletes the project, its runs, events and
-                  generated app. This can&apos;t be undone.
-                </SwiftText>
-              </ConfirmationDialog.Message>
-              <ConfirmationDialog.Actions>
-                <Button role="cancel" onPress={() => setConfirmVisible(false)}>
-                  <SwiftText>Cancel</SwiftText>
-                </Button>
-                <Button
-                  role="destructive"
-                  onPress={() => {
-                    setConfirmVisible(false);
-                    onDelete();
-                  }}
-                >
-                  <SwiftText>Delete</SwiftText>
-                </Button>
-              </ConfirmationDialog.Actions>
-            </ConfirmationDialog>
-          </Host>
-          <Text style={styles.hint}>
-            Removes the project, its runs, events and generated app permanently.
-          </Text>
-        </View>
-      )}
+              {removing ? <ProgressView /> : <SwiftText>Delete project</SwiftText>}
+            </Button>
+          </ConfirmationDialog.Trigger>
+          <ConfirmationDialog.Message>
+            <SwiftText>
+              This permanently deletes the project, its runs, events and
+              generated app. This can&apos;t be undone.
+            </SwiftText>
+          </ConfirmationDialog.Message>
+          <ConfirmationDialog.Actions>
+            <Button role="cancel" onPress={() => setConfirmVisible(false)}>
+              <SwiftText>Cancel</SwiftText>
+            </Button>
+            <Button
+              role="destructive"
+              onPress={() => {
+                setConfirmVisible(false);
+                onDelete();
+              }}
+            >
+              <SwiftText>Delete</SwiftText>
+            </Button>
+          </ConfirmationDialog.Actions>
+        </ConfirmationDialog>
+      </Host>
+      <Text style={styles.hint}>
+        Removes the project, its runs, events and generated app permanently.
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 20 },
-  section: {
+  card: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+  },
+  header: {
     fontSize: 13,
     fontWeight: "700",
     color: "#b91c1c",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  box: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#fecaca",
-    backgroundColor: "#fff5f5",
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#fecaca" },
+  deleteHost: {
+    // Fixed frame — no matchContents: a ConfirmationDialog reports an unstable
+    // content size to the host, which made the button drift on scroll.
+    alignSelf: "flex-start",
+    width: 130,
+    height: 40,
   },
-  deleteHost: { alignSelf: "flex-start" },
   hint: { fontSize: 12, color: "#b91c1c", lineHeight: 16 },
 });

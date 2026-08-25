@@ -14,6 +14,7 @@ function eventIcon(type: string, message: string): { name: IconName; color: stri
   }
   if (type === "question") return { name: "help-circle-outline", color: "#8b5cf6" };
   if (type === "agent_response") return { name: "sparkles-outline", color: "#8b5cf6" };
+  if (type === "log") return { name: "terminal-outline", color: "#8a8f98" };
   if (type === "status") {
     if (message === "ready") return { name: "checkmark-circle", color: "#2ecc40" };
     if (message === "App stopped") return { name: "stop-circle-outline", color: "#8a8f98" };
@@ -22,7 +23,10 @@ function eventIcon(type: string, message: string): { name: IconName; color: stri
     if (message === "failed" || message === "interrupted" || message === "needs_dev_build")
       return { name: "alert-circle", color: "#ff4136" };
     if (message === "awaiting_input") return { name: "time-outline", color: "#8b5cf6" };
-    return { name: "terminal-outline", color: "#666" }; // initializing / generating / qa
+    if (message === "initializing") return { name: "construct-outline", color: "#8a8f98" };
+    if (message === "generating") return { name: "code-slash-outline", color: "#8b5cf6" };
+    if (message === "qa") return { name: "shield-checkmark-outline", color: "#f5a623" };
+    return { name: "terminal-outline", color: "#666" };
   }
   return { name: "information-circle-outline", color: "#999" };
 }

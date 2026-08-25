@@ -104,8 +104,9 @@ export default function NewProjectScreen() {
             placeholderTextColor="#9CA3AF"
             returnKeyType="next"
             onSubmitEditing={() => promptRef.current?.focus()}
-            maxLength={60}
+            maxLength={40}
           />
+          <Text style={styles.counter}>{name.length}/40</Text>
         </View>
 
         <View style={styles.field}>
@@ -173,6 +174,11 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     textTransform: "uppercase",
     letterSpacing: 0.6,
+  },
+  counter: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    textAlign: "right",
   },
   input: {
     backgroundColor: "#fff",
