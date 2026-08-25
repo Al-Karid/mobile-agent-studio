@@ -1,6 +1,9 @@
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { Link, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Link, Stack, router, useFocusEffect } from "expo-router";
+import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
+import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProjectStore } from "@/lib/project-store";
 import type { Project } from "@/lib/api";
 
@@ -45,6 +48,9 @@ export default function ProjectsScreen() {
   const projects = useProjectStore((s) => s.projects);
   const refreshProjects = useProjectStore((s) => s.refreshProjects);
 
+  // iOS header is transparent → content must start below it there.
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() + 16 : 0;
+
   const load = useCallback(() => {
     refreshProjects().catch((e) =>
       setError(e instanceof Error ? e.message : String(e))
@@ -60,7 +66,30 @@ export default function ProjectsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: headerTopInset }]}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <>
+              <HeaderButton
+                onPress={() => router.push("/new")}
+                accessibilityLabel="New Project"
+                testID="new-project-button"
+              >
+                <Ionicons name="add" size={26} color="#111" />
+              </HeaderButton>
+              <HeaderButton
+                onPress={() => router.push("/settings")}
+                accessibilityLabel="Settings"
+                testID="settings-button"
+              >
+                <Ionicons name="settings-outline" size={22} color="#111" />
+              </HeaderButton>
+            </>
+          ),
+        }}
+      />
+
       {error && <Text style={styles.error}>Can't reach server: {error}</Text>}
 
       <FlatList
@@ -72,19 +101,6 @@ export default function ProjectsScreen() {
         }
         renderItem={({ item }) => <ProjectCard item={item} />}
       />
-
-      <View style={styles.footer}>
-        <Link href="/new" asChild>
-          <Pressable style={styles.primaryBtn}>
-            <Text style={styles.primaryBtnText}>New Project</Text>
-          </Pressable>
-        </Link>
-        <Link href="/settings" asChild>
-          <Pressable style={styles.ghostBtn}>
-            <Text style={styles.ghostBtnText}>Settings</Text>
-          </Pressable>
-        </Link>
-      </View>
     </View>
   );
 }
@@ -97,22 +113,4 @@ const styles = StyleSheet.create({
   prompt: { marginTop: 6, fontSize: 13, color: "#666" },
   empty: { textAlign: "center", color: "#999", marginTop: 40 },
   error: { color: "#c00", marginBottom: 10, fontSize: 13 },
-  footer: { flexDirection: "row", gap: 10, marginTop: 12 },
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  ghostBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    alignItems: "center",
-  },
-  ghostBtnText: { color: "#111", fontWeight: "600", fontSize: 15 },
 });

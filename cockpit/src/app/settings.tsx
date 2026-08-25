@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { router } from "expo-router";
 import { getApiUrl, setApiUrl } from "@/lib/settings";
 import { health } from "@/lib/api";
+import { SheetHeader } from "@/components/sheet-header";
 
+/**
+ * Settings — presented as a native iOS liquid-glass sheet (formSheet).
+ * No native header on iOS (same formSheet bugs as New Project), so the screen
+ * renders its own in-content header: ✕ close + title. Transparent background
+ * lets the liquid glass show through.
+ */
 export default function SettingsScreen() {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<string | null>(null);
-
-  // iOS header is transparent → content must start below it there.
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
 
   useEffect(() => {
     getApiUrl().then(setUrl);
@@ -31,14 +35,22 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: headerTopInset + 16 }]}>
+    <View style={styles.container}>
+      {/* In-content header (iOS-only app — no native header in the sheet). */}
+      <SheetHeader
+        title="Settings"
+        subtitle="Server connection"
+        onClose={() => router.back()}
+        style={styles.sheetHeader}
+      />
+
       <Text style={styles.label}>Server URL</Text>
       <TextInput
         style={styles.input}
         value={url}
         onChangeText={setUrl}
         placeholder="http://192.168.1.10:3000"
-        placeholderTextColor="#999"
+        placeholderTextColor="#9CA3AF"
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
@@ -57,12 +69,28 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16, gap: 12 },
-  label: { fontSize: 13, fontWeight: "600", color: "#333" },
-  input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 12, fontSize: 15, color: "#111" },
+  container: {
+    flex: 1,
+    // Transparent so the iOS 26 liquid glass shows through the sheet.
+    backgroundColor: "transparent",
+    padding: 16,
+    gap: 12,
+  },
+  sheetHeader: { paddingHorizontal: 0, paddingTop: 8, paddingBottom: 8 },
+  label: { fontSize: 12, fontWeight: "600", color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.6 },
+  input: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: "#111",
+  },
   status: { color: "#666", fontSize: 13 },
-  primary: { backgroundColor: "#111", paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  primary: { backgroundColor: "#111", paddingVertical: 14, borderRadius: 12, alignItems: "center" },
   primaryText: { color: "#fff", fontWeight: "700" },
-  ghost: { paddingVertical: 14, borderRadius: 10, borderWidth: 1, borderColor: "#ddd", alignItems: "center" },
+  ghost: { paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#fff", alignItems: "center" },
   ghostText: { color: "#111", fontWeight: "600" },
 });
