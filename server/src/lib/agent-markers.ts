@@ -20,9 +20,13 @@ export interface AgentQuestion {
 
 export const QUESTION_OPTIONS_SEPARATOR = "\n---options---\n";
 
-/** First non-empty line after the `AGENT_RESPONSE:` marker, trimmed. */
+/**
+ * Everything after the LAST `AGENT_RESPONSE:` marker to the end of the buffer.
+ * The model sometimes narrates before the marker or repeats it — a greedy
+ * prefix pins the match to the final summary line.
+ */
 export function extractAgentResponse(buffer: string): string | null {
-  const m = buffer.match(/AGENT_RESPONSE:\s*([^\n]+)/);
+  const m = buffer.match(/[\s\S]*AGENT_RESPONSE:\s*([\s\S]*)$/);
   return m ? m[1].trim() : null;
 }
 
@@ -37,7 +41,17 @@ export function extractAgentQuestion(buffer: string): AgentQuestion | null {
   if (optMatch) {
     for (const line of optMatch[1].split("\n")) {
       const cleaned = line.trim().replace(/^[-*•]\s*/, "").trim();
-      if (cleaned.length > 0) options.push(cleaned);
+      // The options block ends at a blank line or the next agent marker —
+      // agents sometimes repeat the whole question block, and swallowing it
+      // would pollute the options with marker lines and duplicated choices.
+      if (cleaned.length === 0) break;
+      if (
+        cleaned.startsWith("AGENT_QUESTION:") ||
+        cleaned.startsWith("AGENT_RESPONSE:")
+      ) {
+        break;
+      }
+      options.push(cleaned);
     }
   }
   return { question, options };

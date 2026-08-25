@@ -46,9 +46,10 @@ export default function ProjectChatScreen() {
     onError: setError,
   });
   const scrollRef = useRef<ScrollView>(null);
+  const headerHeight = useHeaderHeight();
 
   // iOS header is transparent → content must start below it there.
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const headerTopInset = Platform.OS === "ios" ? headerHeight : 0;
 
   const running = project?.status === "launched";
 
@@ -160,6 +161,26 @@ export default function ProjectChatScreen() {
             />
           ) : item.kind === "launch" ? (
             <LaunchStack key={item.id} events={item.events} />
+          ) : item.kind === "question" ? (
+            // Agent asked the user a question — render the option chips so the
+            // user can answer with one tap (sends the chosen option as a prompt).
+            // Chips go inert once answered (or while another run is busy) so a
+            // mis-tap can't regenerate the answer.
+            <MessageBubble
+              key={item.id}
+              onAnswer={(opt) => send(opt)}
+              turn={{
+                id: item.id,
+                role: "agent",
+                status: "question",
+                question: {
+                  question: item.question,
+                  options: item.options,
+                  answered: item.answered || busy,
+                },
+                runId: item.runId ?? 0,
+              }}
+            />
           ) : item.kind === "event" && item.type === "agent_response" ? (
             // The agent's actual response goes in a ghost-like bubble.
             <MessageBubble

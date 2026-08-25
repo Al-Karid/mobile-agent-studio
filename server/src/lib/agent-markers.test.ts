@@ -6,10 +6,31 @@ import {
   formatQuestionMessage,
 } from "./agent-markers";
 
-test("extractAgentResponse returns the summary line", () => {
+test("extractAgentResponse returns the full summary (multi-line markdown allowed)", () => {
   const buffer =
-    "lots of agent output…\nAGENT_RESPONSE: Your app icon is now dark.\nmore output";
-  assert.equal(extractAgentResponse(buffer), "Your app icon is now dark.");
+    "lots of agent output…\n" +
+    "AGENT_RESPONSE: Your app icon is now dark.\n" +
+    "\n" +
+    "It now uses a **dark** palette and a new icon.";
+  assert.equal(
+    extractAgentResponse(buffer),
+    "Your app icon is now dark.\n\nIt now uses a **dark** palette and a new icon."
+  );
+});
+
+test("extractAgentResponse uses the LAST marker (drops narrated prose + repeats)", () => {
+  const buffer =
+    "lots of work…\n" +
+    "AGENT_RESPONSE: summary one.\n" +
+    "Done. I did lots of technical things…\n" +
+    "\n" +
+    "AGENT_RESPONSE: final summary.";
+  assert.equal(extractAgentResponse(buffer), "final summary.");
+});
+
+test("extractAgentResponse handles the summary on the line after the marker", () => {
+  const buffer = "AGENT_RESPONSE:\nYour app is ready.";
+  assert.equal(extractAgentResponse(buffer), "Your app is ready.");
 });
 
 test("extractAgentResponse returns null when absent", () => {
@@ -30,6 +51,19 @@ test("extractAgentQuestion parses question + options", () => {
 test("extractAgentQuestion tolerates missing options", () => {
   const q = extractAgentQuestion("AGENT_QUESTION: How should I name the app?");
   assert.deepEqual(q, { question: "How should I name the app?", options: [] });
+});
+
+test("extractAgentQuestion stops at a duplicated marker block after the options", () => {
+  const buffer =
+    "AGENT_QUESTION: Which color should the new button be?\n" +
+    "OPTIONS:\n- red\n- blue\n- green\n" +
+    "AGENT_QUESTION: Which color should the new button be?\n" +
+    "OPTIONS:\n- red\n- blue\n- green\n";
+  const q = extractAgentQuestion(buffer);
+  assert.deepEqual(q, {
+    question: "Which color should the new button be?",
+    options: ["red", "blue", "green"],
+  });
 });
 
 test("formatQuestionMessage round-trips through parsing", () => {

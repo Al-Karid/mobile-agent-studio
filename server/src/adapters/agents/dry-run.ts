@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { AgentAdapter, AgentRunRequest } from "@/contracts/agent";
+import type { AgentAdapter, AgentEvent, AgentRunRequest } from "@/contracts/agent";
+import { decodeAgentOutput } from "./decoders";
 
 /**
  * dry-run adapter — simulates a coding agent without any CLI, API key, or
@@ -14,19 +15,25 @@ export const dryRunAdapter: AgentAdapter = {
     return true;
   },
 
-  async *run(req: AgentRunRequest) {
-    yield { type: "output", data: `[dry-run] generating a minimal Expo app for: ${req.prompt}\n` };
-
-    await sleep(1200);
-
-    writeMinimalApp(req.projectDir, req.prompt);
-
-    yield { type: "output", data: "[dry-run] wrote app.json, package.json, App.js\n" };
-    yield { type: "output", data: "[dry-run] done — Expo Go-safe, no native modules\n" };
-    yield { type: "output", data: "AGENT_RESPONSE: Done — a minimal Expo Go-safe app is ready to run.\n" };
-    yield { type: "done", exitCode: 0 };
+  run(req: AgentRunRequest) {
+    return decodeAgentOutput("dry-run", dryRunStream(req));
   },
 };
+
+async function* dryRunStream(
+  req: AgentRunRequest
+): AsyncGenerator<AgentEvent, void, unknown> {
+  yield { type: "output", data: `[dry-run] generating a minimal Expo app for: ${req.prompt}\n` };
+
+  await sleep(1200);
+
+  writeMinimalApp(req.projectDir, req.prompt);
+
+  yield { type: "output", data: "[dry-run] wrote app.json, package.json, App.js\n" };
+  yield { type: "output", data: "[dry-run] done — Expo Go-safe, no native modules\n" };
+  yield { type: "output", data: "AGENT_RESPONSE: Done — a minimal Expo Go-safe app is ready to run.\n" };
+  yield { type: "done", exitCode: 0 };
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

@@ -6,6 +6,8 @@
 export interface ChatQuestion {
   question: string;
   options: string[];
+  /** True once the user answered (or a newer run is busy) — chips become inert. */
+  answered?: boolean;
 }
 
 export type ChatTurnStatus = "pending" | "done" | "error" | "question";

@@ -1,5 +1,6 @@
 import type { AgentAdapter, AgentRunRequest } from "@/contracts/agent";
 import { commandExists, spawnToEvents } from "./process";
+import { decodeAgentOutput } from "./decoders";
 
 /**
  * Cline CLI adapter (headless). Invocation validated against cline 3.0.57:
@@ -26,10 +27,11 @@ export const clineAdapter: AgentAdapter = {
       args.push("-k", req.credentials.apiKey);
     }
     args.push("-m", model, "--thinking", "none", "--json", buildPrompt(req));
-    return spawnToEvents("cline", args, {
+    // cline --json wraps its output — decode it to plain text (see decoders.ts).
+    return decodeAgentOutput("cline", spawnToEvents("cline", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },
-    }, req.signal);
+    }, req.signal));
   },
 };
 

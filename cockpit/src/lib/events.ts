@@ -25,6 +25,18 @@ export interface TimelineEventItem {
   ongoing: boolean;
 }
 
+/** Agent question with tap-able option chips (the user must decide). */
+export interface TimelineQuestionItem {
+  kind: "question";
+  id: string;
+  question: string;
+  options: string[];
+  /** True once the user answered — the chips are disabled to avoid a re-run. */
+  answered: boolean;
+  at: number;
+  runId: number | null;
+}
+
 /** Consecutive launch-related events grouped into one compact component. */
 export interface TimelineLaunchItem {
   kind: "launch";
@@ -33,7 +45,11 @@ export interface TimelineLaunchItem {
   at: number;
 }
 
-export type TimelineItem = TimelineUserItem | TimelineEventItem | TimelineLaunchItem;
+export type TimelineItem =
+  | TimelineUserItem
+  | TimelineQuestionItem
+  | TimelineEventItem
+  | TimelineLaunchItem;
 
 // Internal statuses that don't tell the user anything.
 const NOISE_STATUSES = new Set(["created", "queued", "launch queued"]);
@@ -83,6 +99,17 @@ function cleanMessage(message: string): string {
   return i === -1 ? message : message.slice(0, i);
 }
 
+/**
+ * A model turn shows ONLY what follows its `AGENT_RESPONSE:` marker — anything
+ * the agent narrated before it (or a repeated marker line) is dropped. Falls
+ * back to the full message when no marker is present.
+ */
+function cleanAgentTurn(message: string): string {
+  const MARKER = "AGENT_RESPONSE:";
+  const i = message.lastIndexOf(MARKER);
+  return i === -1 ? message : message.slice(i + MARKER.length).trim();
+}
+
 /** Build the chat timeline: user prompts + real relevant events, sorted. */
 export function buildTimeline(project: ProjectDetail): TimelineItem[] {
   const items: TimelineItem[] = [];
@@ -109,11 +136,40 @@ export function buildTimeline(project: ProjectDetail): TimelineItem[] {
     if (e.type === "log") continue; // internal noise
     if (e.type === "status" && NOISE_STATUSES.has(e.message)) continue;
 
-    // Orphan `status: ready` (run_id null) = the Stop action.
+    // Agent question → a dedicated item with tap-able option chips. The raw
+    // message is `question + "---options---" + options` (server format).
+    if (e.type === "question") {
+      const [question, optionsBlock = ""] = (e.message ?? "").split(
+        QUESTION_OPTIONS_SEPARATOR
+      );
+      // Answered = any correction run came after the run that asked — tapping a
+      // chip again would otherwise regenerate the answer.
+      const answered = project.runs.some(
+        (r) => r.kind === "correct" && r.id > (e.run_id ?? 0)
+      );
+      items.push({
+        kind: "question",
+        id: `ev-${e.id}`,
+        question: (question || "Question").trim(),
+        options: optionsBlock
+          .split("\n")
+          .map((s) => s.trim().replace(/^[-*•]\s*/, "").trim())
+          .filter(Boolean),
+        answered,
+        at: e.created_at,
+        runId: e.run_id,
+      });
+      continue;
+    }
+
+    // Orphan `status: ready` (run_id null) = the Stop action. Model turns show
+    // only the text after their AGENT_RESPONSE: marker (nothing narrated before).
     const message =
       e.type === "status" && e.message === "ready" && e.run_id === null
         ? "App stopped"
-        : cleanMessage(e.message);
+        : e.type === "agent_response"
+          ? cleanAgentTurn(e.message)
+          : cleanMessage(e.message);
 
     items.push({
       kind: "event",

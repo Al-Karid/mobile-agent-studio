@@ -1,5 +1,6 @@
 import type { AgentAdapter, AgentRunRequest } from "@/contracts/agent";
 import { commandExists, spawnToEvents } from "./process";
+import { decodeAgentOutput } from "./decoders";
 
 /** Anthropic Claude Code CLI adapter. `claude -p` is the print/headless mode. */
 export const claudeAdapter: AgentAdapter = {
@@ -14,7 +15,7 @@ export const claudeAdapter: AgentAdapter = {
     if (req.credentials?.model) {
       args.push("--model", req.credentials.model);
     }
-    return spawnToEvents("claude", args, {
+    return decodeAgentOutput("claude", spawnToEvents("claude", args, {
       cwd: req.projectDir,
       env: {
         ...process.env,
@@ -23,6 +24,6 @@ export const claudeAdapter: AgentAdapter = {
           ? { ANTHROPIC_API_KEY: req.credentials.apiKey }
           : {}),
       },
-    }, req.signal);
+    }, req.signal));
   },
 };

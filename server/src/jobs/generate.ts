@@ -26,6 +26,7 @@ import type { Project, ProjectStatus, Run } from "@/contracts/storage";
 const AGENT_CONTEXT = `You are generating an Expo (React Native) app that MUST run in Expo Go.
 
 Hard rules:
+- A choice only the user can make (color, name, wording, behavior) must NEVER be guessed. If the request involves one — or uses words like "ask me", "which", "choose", or "let me decide" — you MUST STOP and ask via AGENT_QUESTION BEFORE writing ANY app file. Output \`AGENT_QUESTION:\` with the question on one line, then \`OPTIONS:\` with one \`- option\` per line, and do not write any app files after asking.
 - Target the LATEST Expo SDK.
 - Use expo-router for navigation and PLAIN React Native components for all UI
   (View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert,
@@ -36,8 +37,7 @@ Hard rules:
 - Never create or edit ios/ or android/ by hand (Continuous Native Generation).
 
 Reporting:
-- When you finish the work, output a final line starting with \`AGENT_RESPONSE:\` followed by ONE concise, user-facing sentence summarizing what you changed (no markdown, no bullet lists). Example: \`AGENT_RESPONSE: Your app icon is now dark.\`
-- If you MUST ask the user something before continuing (a choice only they can make, e.g. which color, which name), STOP and output \`AGENT_QUESTION:\` + the question on one line, then \`OPTIONS:\` with one \`- option\` per line. Do NOT write any app files after asking.`;
+- When you finish, output a final line starting with \`AGENT_RESPONSE:\` followed by a SHORT plain-language summary of what changed (at most 2 sentences), for a non-technical user. NEVER mention file paths, component or style names, package names, commands, TypeScript/typecheck, lint, or validation. Light markdown is fine (bold, inline code, short paragraphs). Example: \`AGENT_RESPONSE: Your app icon is now dark.\``;
 
 type Handler = (type: string, message: string) => Promise<void>;
 
@@ -80,6 +80,13 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
     let exitCode = 0;
     let buffer = "";
     let question: AgentQuestion | null = null;
+    // Once an AGENT_QUESTION marker appears, KEEP draining until the run ends —
+    // the agent is told to stop after asking, and its question + OPTIONS lines
+    // stream right after the marker. Parsing the marker mid-stream truncates it
+    // (the question captures the first partial token, e.g. "Which") and aborts
+    // before the options arrive.
+    let draining = false;
+    let drainBudget = 40;
     for await (const ev of adapter.run({
       projectDir: dir,
       prompt: run.input ?? project.prompt,
@@ -93,8 +100,11 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
         // Keep a rolling tail so the AGENT_* markers are found even when the
         // output arrives split across chunks.
         buffer = (buffer + ev.data).slice(-8000);
-        question = extractAgentQuestion(buffer);
-        if (question) {
+        if (!draining) {
+          if (buffer.includes("AGENT_QUESTION:")) {
+            draining = true;
+          }
+        } else if (drainBudget-- <= 0) {
           controller.abort();
           break;
         }
@@ -103,6 +113,11 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
       } else if (ev.type === "done") {
         exitCode = ev.exitCode;
       }
+    }
+    // The agent finished (or the budget expired) — parse the complete question.
+    if (draining) {
+      question = extractAgentQuestion(buffer);
+      controller.abort();
     }
 
     // The agent asked the user a question: journal it and wait for their

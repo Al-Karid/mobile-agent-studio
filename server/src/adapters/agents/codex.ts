@@ -1,5 +1,6 @@
 import type { AgentAdapter, AgentRunRequest } from "@/contracts/agent";
 import { commandExists, spawnToEvents } from "./process";
+import { decodeAgentOutput } from "./decoders";
 
 /** OpenAI Codex CLI adapter. `codex exec` is the headless entry point. */
 export const codexAdapter: AgentAdapter = {
@@ -16,7 +17,7 @@ export const codexAdapter: AgentAdapter = {
       args.push("--model", req.credentials.model);
     }
     args.push(req.prompt);
-    return spawnToEvents("codex", args, {
+    return decodeAgentOutput("codex", spawnToEvents("codex", args, {
       cwd: req.projectDir,
       env: {
         ...process.env,
@@ -25,6 +26,6 @@ export const codexAdapter: AgentAdapter = {
           ? { OPENAI_API_KEY: req.credentials.apiKey }
           : {}),
       },
-    }, req.signal);
+    }, req.signal));
   },
 };
