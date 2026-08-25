@@ -61,7 +61,7 @@ export function ProjectCard({ item }: { item: Project }) {
           </View>
         </View>
 
-        <Text style={styles.prompt} numberOfLines={2}>
+        <Text style={styles.prompt} numberOfLines={2} ellipsizeMode="tail">
           {item.prompt}
         </Text>
 

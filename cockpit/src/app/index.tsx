@@ -12,8 +12,10 @@ export default function ProjectsScreen() {
   const projects = useProjectStore((s) => s.projects);
   const refreshProjects = useProjectStore((s) => s.refreshProjects);
 
-  // iOS header is transparent → content must start below it there.
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() + 16 : 0;
+  // iOS header is transparent → the list content must start below it.
+  // (Padding lives on the scroll CONTENT, not the container, so the background
+  // fills the screen behind the header and cards scroll under it.)
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
 
   const load = useCallback(() => {
     refreshProjects().catch((e) =>
@@ -30,7 +32,7 @@ export default function ProjectsScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: headerTopInset }]}>
+    <View style={styles.container}>
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -54,12 +56,16 @@ export default function ProjectsScreen() {
         }}
       />
 
-      {error && <Text style={styles.error}>Can't reach server: {error}</Text>}
-
       <FlatList
         data={projects}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingTop: headerTopInset + 16 },
+        ]}
+        ListHeaderComponent={
+          error ? <Text style={styles.error}>Can't reach server: {error}</Text> : null
+        }
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>
         }
@@ -70,7 +76,10 @@ export default function ProjectsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F7", padding: 16 },
+  // Background fills the whole screen (including behind the transparent
+  // header); only the scroll content is offset below it.
+  container: { flex: 1, backgroundColor: "#F5F5F7", paddingHorizontal: 16 },
+  listContent: { gap: 8, paddingBottom: 24 },
   empty: { textAlign: "center", color: "#999", marginTop: 40 },
   error: { color: "#c00", marginBottom: 10, fontSize: 13 },
 });
