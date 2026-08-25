@@ -93,7 +93,7 @@ export function MessageBubble({
 }
 
 const styles = StyleSheet.create({
-  userRow: { alignItems: "flex-end", marginVertical: 4 },
+  userRow: { alignItems: "flex-end", marginTop: 4, marginBottom: 16 },
   userBubble: {
     maxWidth: "85%",
     backgroundColor: "#111",

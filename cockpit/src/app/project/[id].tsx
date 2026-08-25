@@ -14,7 +14,6 @@ import { HeaderButton } from "expo-router/build/react-navigation/elements/Header
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useChat } from "@/hooks/use-chat";
 import { useProjectActions } from "@/hooks/use-project-actions";
-import { statusColor } from "@/lib/status";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInputBar } from "@/components/chat/input-bar";
 import { EventRow } from "@/components/event-row";
@@ -77,6 +76,7 @@ export default function ProjectChatScreen() {
 
       <Stack.Screen
         options={{
+          title: project?.name ?? "Project",
           headerRight: () => (
             <>
               {running ? (
@@ -126,30 +126,16 @@ export default function ProjectChatScreen() {
         }}
       />
 
-      {/* slim bar: project name + status dot (below transparent header) */}
-      <View style={[styles.bar, { paddingTop: headerTopInset }]}>
-        <View style={styles.titleWrap}>
-          {project && (
-            <View
-              style={[
-                styles.dot,
-                { backgroundColor: statusColor(project.status) },
-              ]}
-            />
-          )}
-          <Text style={styles.name} numberOfLines={1}>
-            {project?.name ?? "…"}
-          </Text>
-        </View>
-      </View>
-
       {error && <Text style={styles.error}>{error}</Text>}
 
       {/* conversation */}
       <ScrollView
         ref={scrollRef}
         style={styles.messages}
-        contentContainerStyle={styles.messagesContent}
+        contentContainerStyle={[
+          styles.messagesContent,
+          { paddingTop: headerTopInset + 16 },
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onContentSizeChange={() =>
@@ -210,15 +196,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  titleWrap: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  name: { fontSize: 17, fontWeight: "700", color: "#111", flexShrink: 1 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
   messages: { flex: 1 },
   messagesContent: { padding: 16 },
   empty: { textAlign: "center", color: "#999", marginTop: 60, fontSize: 14 },
