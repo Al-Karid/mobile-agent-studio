@@ -60,10 +60,12 @@ This is the product's differentiator: "Expo Go-safe guaranteed".
 | Use | v4-flash | v4-pro |
 |---|---|---|
 | Build the V1 | ~$0.5-1 | ~$1.5-3 |
-| Generate 1 app | ~$0.10-0.25 | ~$0.35-0.70 |
+| Generate 1 app | **~$0.03 measured** (thinking off) | ~$0.35-0.70 |
 | 1 correction | ~$0.02-0.05 | ~$0.05-0.15 |
 
-Cache hit input is ~30-60x cheaper than miss; the shared template/context maximizes it.
+Measured on a real run (Aug 2026): a full "greet in 5 languages" app cost **$0.031**
+with `--thinking none`. The earlier $0.10-0.25 figure assumed default thinking mode,
+which streams far more tokens. Cache-hit input is ~30-60x cheaper than miss.
 
 ## Decisions log
 
@@ -88,6 +90,6 @@ created → initializing → generating → qa → ready → launching → launc
 
 ## TODO / open questions
 
-- ~~Exact Cline headless CLI syntax~~ validated: `cline -c <dir> -P deepseek -m <model> --json "<prompt>"` (cline 3.0.57, DeepSeek via ~/.cline).
+- ~~Exact Cline headless CLI syntax~~ validated: `cline -c <dir> -P deepseek -m <model> --thinking none --json "<prompt>"` (cline 3.0.57, DeepSeek via ~/.cline).
 - Push notifications / native modules → dev-build path (deferred; $99 Apple signing).
 - V2: Docker on a VPS, model routing (flash → pro on QA failure), device-cloud validator.

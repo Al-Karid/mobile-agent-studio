@@ -37,4 +37,16 @@ npm install
 npx expo start         # scan QR in Expo Go, set the server URL in Settings
 ```
 
+## Test & verify (server/)
+
+```bash
+cd server
+npm test            # unit tests (7)
+npm run smoke       # dry-run pipeline (no API key): generate → git → QA → ready
+npm run test:launch # generate + launch end-to-end (needs network: npm install + Metro)
+npm run build       # TypeScript source of truth
+```
+
+Requires the Cline CLI (`npm install -g cline`) — provider/key live in `~/.cline`.
+
 See `docs/ARCHITECTURE.md` for the full design.
