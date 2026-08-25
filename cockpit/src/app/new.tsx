@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -17,16 +16,11 @@ import {
   disabled,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import { createProject, getProviderSettings, type ProjectPlatform } from "@/lib/api";
+import { createProject, type ProjectPlatform } from "@/lib/api";
+import { noApiKeys, useAgentAvailability } from "@/lib/agent-keys";
+import { AgentSelector } from "@/components/agent-selector";
 import { SheetHeader } from "@/components/sheet-header";
 import { PlatformSelector } from "@/components/platform-selector";
-
-const AGENTS = [
-  { id: "dry-run", title: "Dry run" },
-  { id: "cline", title: "Cline" },
-  { id: "codex", title: "Codex" },
-  { id: "claude", title: "Claude" },
-];
 
 /**
  * New Project — presented as a native iOS liquid-glass sheet (formSheet).
@@ -40,45 +34,25 @@ export default function NewProjectScreen() {
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agent, setAgent] = useState("dry-run");
-  // Agents the user has an API key for (dry-run never needs one).
-  const [enabledAgents, setEnabledAgents] = useState<Record<string, boolean>>({
-    "dry-run": true,
-    cline: false,
-    codex: false,
-    claude: false,
-  });
   const [platform, setPlatform] = useState<ProjectPlatform>("ios");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const promptRef = useRef<TextInput>(null);
 
-  // Pre-select the user's default agent (set in Settings) for this project,
-  // and disable agents that have no API key configured yet. An agent is only
-  // usable when the user saved a key for it (cline = the provider chosen in
-  // Settings); dry-run never needs a key.
-  useEffect(() => {
-    getProviderSettings()
-      .then((p) => {
-        const enabled: Record<string, boolean> = {
-          "dry-run": true,
-          cline: Boolean(p.cline.keys[p.cline.provider]),
-          codex: Boolean(p.codex.key),
-          claude: Boolean(p.claude.key),
-        };
-        setEnabledAgents(enabled);
-        // Keep the current pick when usable; else the default agent if it has
-        // a key; else fall back to dry-run.
-        setAgent((current) =>
-          enabled[current] ? current : enabled[p.agent] ? p.agent : "dry-run"
-        );
-      })
-      .catch(() => {});
-  }, []);
-
+  const { settings, enabledAgents } = useAgentAvailability();
   // No AI agent is usable until the user saves at least one API key.
-  const noApiKeys =
-    !enabledAgents.cline && !enabledAgents.codex && !enabledAgents.claude;
+  const noKeysSet = settings ? noApiKeys(settings) : true;
+
+  // Pre-select the user's default agent (set in Settings) for this project,
+  // keeping the current pick when usable; else fall back to dry-run.
+  useEffect(() => {
+    if (!settings) return;
+    setAgent((current) =>
+      enabledAgents[current] ? current : enabledAgents[settings.agent] ? settings.agent : "dry-run"
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   async function submit() {
     if (busy) return;
@@ -157,31 +131,8 @@ export default function NewProjectScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>Agent</Text>
-          <View style={styles.segmented}>
-            {AGENTS.map((a) => {
-              const active = agent === a.id;
-              const enabled = enabledAgents[a.id];
-              return (
-                <Pressable
-                  key={a.id}
-                  onPress={() => setAgent(a.id)}
-                  disabled={!enabled}
-                  style={[
-                    styles.segment,
-                    active && styles.segmentActive,
-                    !enabled && styles.segmentDisabled,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active, disabled: !enabled }}
-                >
-                  <Text style={[styles.segmentTitle, active && styles.segmentTitleActive]}>
-                    {a.title}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {noApiKeys && (
+          <AgentSelector value={agent} onChange={setAgent} enabledAgents={enabledAgents} />
+          {noKeysSet && (
             <Text style={styles.agentHint}>Set an API Key to use an agent</Text>
           )}
         </View>
@@ -234,26 +185,6 @@ const styles = StyleSheet.create({
     color: "#111",
   },
   textarea: { minHeight: 100, lineHeight: 20 },
-  segmented: {
-    flexDirection: "row",
-    gap: 8,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 14,
-    padding: 4,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  segmentActive: { backgroundColor: "#111" },
-  segmentDisabled: { opacity: 0.4 },
-  segmentTitle: { fontSize: 14, fontWeight: "700", color: "#374151" },
-  segmentTitleActive: { color: "#fff" },
   agentHint: { fontSize: 12, color: "#9CA3AF", lineHeight: 16 },
   errorBox: {
     flexDirection: "row",

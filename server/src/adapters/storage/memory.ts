@@ -114,6 +114,14 @@ export function createMemoryStorage(): StorageAdapter {
         p.updated_at = Date.now();
       }
     },
+    async setProjectAgent(id, agent, model) {
+      const p = projects.get(id);
+      if (p) {
+        p.agent = agent;
+        p.model = model;
+        p.updated_at = Date.now();
+      }
+    },
     async deleteProject(id) {
       projects.delete(id);
       for (const [k, v] of runs) if (v.project_id === id) runs.delete(k);

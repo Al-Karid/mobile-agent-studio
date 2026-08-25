@@ -107,6 +107,8 @@ export interface StorageAdapter {
   listProjects(userId: string): Promise<Project[]>;
   setProjectStatus(id: string, status: ProjectStatus): Promise<void>;
   setProjectExpUrl(id: string, expUrl: string | null, metroPort: number | null): Promise<void>;
+  /** Change the project's agent (and the model it displays, resolved server-side). */
+  setProjectAgent(id: string, agent: string, model: string): Promise<void>;
   deleteProject(id: string): Promise<void>;
 
   // runs

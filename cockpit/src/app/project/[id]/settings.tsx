@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -8,9 +8,12 @@ import { buttonStyle, disabled, tint } from "@expo/ui/swift-ui/modifiers";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { useProjectStore } from "@/lib/project-store";
+import { updateProjectAgent } from "@/lib/api";
+import { noApiKeys, useAgentAvailability } from "@/lib/agent-keys";
 import { statusColor, statusLabel } from "@/lib/status";
 import { EventRow } from "@/components/event-row";
 import { DangerZone } from "@/components/danger-zone";
+import { AgentSelector } from "@/components/agent-selector";
 
 /** One label → value row inside a settings card. */
 function InfoRow({
@@ -74,6 +77,45 @@ export default function ProjectSettingsScreen() {
     .slice(-50)
     .reverse();
 
+  // Agent change — selector is locked to agents the user has a key for.
+  const { settings, enabledAgents } = useAgentAvailability();
+  const noKeysSet = settings ? noApiKeys(settings) : true;
+  const [agent, setAgent] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [savingAgent, setSavingAgent] = useState(false);
+
+  // Keep the selector in sync with the server until the user edits it.
+  useEffect(() => {
+    if (project && !dirty) setAgent(project.agent);
+  }, [project?.agent, dirty]);
+
+  function changeAgent(a: string) {
+    setAgent(a);
+    setDirty(true);
+  }
+
+  async function saveAgent() {
+    if (savingAgent || !dirty || !enabledAgents[agent]) return;
+    setSavingAgent(true);
+    try {
+      const updated = await updateProjectAgent(id, agent);
+      // The PATCH returns the bare project — merge in the current history.
+      const current = project;
+      setProject(
+        current
+          ? { ...current, ...updated }
+          : { ...updated, runs: [], events: [] }
+      );
+      setAgent(updated.agent);
+      setDirty(false);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingAgent(false);
+    }
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -124,6 +166,39 @@ export default function ProjectSettingsScreen() {
         />
       </View>
 
+      {/* Description */}
+      <View style={styles.card}>
+        <CardHeader>Description</CardHeader>
+        <Text style={styles.prompt}>{project?.prompt ?? ""}</Text>
+      </View>
+
+      {/* Agent — change which agent runs this project's prompts */}
+      <View style={styles.card}>
+        <CardHeader>Agent</CardHeader>
+        <Text style={styles.hint}>
+          The agent runs this project&apos;s prompts. Agents need an API key set in Settings.
+        </Text>
+        <AgentSelector
+          value={agent || project?.agent || "dry-run"}
+          onChange={changeAgent}
+          enabledAgents={enabledAgents}
+        />
+        {noKeysSet && <Text style={styles.hint}>Set an API Key to use an agent.</Text>}
+        <Pressable
+          onPress={saveAgent}
+          disabled={!dirty || savingAgent || !enabledAgents[agent]}
+          style={[
+            styles.primary,
+            (!dirty || savingAgent || !enabledAgents[agent]) && styles.primaryDisabled,
+          ]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryText}>
+            {savingAgent ? "Saving…" : dirty ? "Save agent" : "Agent saved"}
+          </Text>
+        </Pressable>
+      </View>
+
       {/* Technical details — expandable, aimed at developers */}
       <View style={styles.card}>
         <Pressable
@@ -140,7 +215,7 @@ export default function ProjectSettingsScreen() {
             <View style={styles.divider} />
             <InfoRow label="Agent" value={project?.agent ?? "—"} />
             <View style={styles.divider} />
-            <InfoRow label="Model" value={project?.model ?? "—"} />
+            <InfoRow label="Model" value={project?.model || "—"} />
             <View style={styles.divider} />
             <InfoRow label="Project ID" value={project?.id ?? "—"} mono />
             {project?.exp_url && (
@@ -153,12 +228,6 @@ export default function ProjectSettingsScreen() {
             )}
           </>
         )}
-      </View>
-
-      {/* Description */}
-      <View style={styles.card}>
-        <CardHeader>Description</CardHeader>
-        <Text style={styles.prompt}>{project?.prompt ?? ""}</Text>
       </View>
 
       {/* Activity — collapsible, expanded by default, newest first */}
@@ -247,6 +316,15 @@ const styles = StyleSheet.create({
   accent: { color: "#4aa3ff" },
   prompt: { fontSize: 15, color: "#333", lineHeight: 22 },
   empty: { fontSize: 14, color: "#8E8E93" },
+  hint: { fontSize: 12, color: "#6B7280", lineHeight: 17 },
+  primary: {
+    backgroundColor: "#111",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  primaryDisabled: { opacity: 0.4 },
+  primaryText: { color: "#fff", fontWeight: "700" },
   stopHost: { alignSelf: "flex-start" },
   error: { color: "#c00", fontSize: 13 },
 });

@@ -16,6 +16,7 @@ export function ChatInputBar({
   busy,
   onKeyboardShow,
   placeholder = "Ask for a change…",
+  enabled = true,
 }: {
   value: string;
   onChangeText: (v: string) => void;
@@ -23,8 +24,10 @@ export function ChatInputBar({
   busy: boolean;
   onKeyboardShow?: () => void;
   placeholder?: string;
+  /** Locked until the project's agent has an API key (see lib/agent-keys). */
+  enabled?: boolean;
 }) {
-  const disabled = value.trim().length === 0;
+  const disabled = value.trim().length === 0 || !enabled;
   const { height, target } = useKeyboardHeight(onKeyboardShow);
 
   // 44px above the bottom when closed → 15px above the keyboard when open.
@@ -44,21 +47,23 @@ export function ChatInputBar({
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
-          placeholder={placeholder}
+          placeholder={enabled ? placeholder : "Select a model or set API key"}
           placeholderTextColor="#999"
           multiline
-          editable={!busy}
+          editable={!busy && enabled}
         />
         <Pressable
           onPress={onSend}
           disabled={disabled || busy}
-          accessibilityLabel="Send prompt"
+          accessibilityLabel={enabled ? "Send prompt" : "Locked — set an API key"}
           style={[styles.send, disabled && styles.sendDisabled]}
         >
           {busy ? (
             <ActivityIndicator size="small" color="#fff" />
-          ) : (
+          ) : enabled ? (
             <Ionicons name="arrow-up" size={17} color="#fff" />
+          ) : (
+            <Ionicons name="lock-closed" size={15} color="#fff" />
           )}
         </Pressable>
       </View>

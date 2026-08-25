@@ -220,6 +220,16 @@ export async function stopProject(id: string): Promise<{ project: Project }> {
   return json(res);
 }
 
+/** Change the project's agent (project settings → Agent). */
+export async function updateProjectAgent(id: string, agent: string): Promise<Project> {
+  const res = await fetch(`${await base()}/api/projects/${id}`, {
+    method: "PATCH",
+    ...(await withAuth()),
+    body: JSON.stringify({ agent }),
+  });
+  return (await json<{ project: Project }>(res)).project;
+}
+
 export async function deleteProject(id: string): Promise<void> {
   const res = await fetch(`${await base()}/api/projects/${id}`, {
     method: "DELETE",

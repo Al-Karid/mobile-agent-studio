@@ -37,6 +37,7 @@ export default function ProjectChatScreen() {
     send,
     busy,
     sendError,
+    inputLocked,
   } = useChat(id);
   const actions = useProjectActions({
     projectId: id,
@@ -176,6 +177,7 @@ export default function ProjectChatScreen() {
         onChangeText={setInput}
         onSend={send}
         busy={busy}
+        enabled={!inputLocked}
         onKeyboardShow={() =>
           scrollRef.current?.scrollToEnd({ animated: true })
         }

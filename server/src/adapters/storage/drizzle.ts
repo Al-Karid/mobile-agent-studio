@@ -136,6 +136,14 @@ class DrizzleStorageAdapter implements StorageAdapter {
       .where(eq(this.s.projects.id, id));
   }
 
+  async setProjectAgent(id: string, agent: string, model: string): Promise<void> {
+    await this.ensureSchema();
+    await this.db
+      .update(this.s.projects)
+      .set({ agent, model, updated_at: Date.now() })
+      .where(eq(this.s.projects.id, id));
+  }
+
   async deleteProject(id: string): Promise<void> {
     await this.ensureSchema();
     await this.db.delete(this.s.projects).where(eq(this.s.projects.id, id));
