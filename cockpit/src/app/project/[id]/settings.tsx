@@ -55,9 +55,10 @@ export default function ProjectSettingsScreen() {
     onProjectChange: setProject,
     onError: setError,
     onDeleted: () => {
-      // Drop the project from the local store, then leave the settings screen.
+      // Drop the project from the local store, then pop back to the root list —
+      // dismissing (not pushing a new home) so there's no back button.
       removeProject(id);
-      router.replace("/");
+      router.dismissAll();
     },
   });
 
