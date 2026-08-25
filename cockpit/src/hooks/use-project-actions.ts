@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Linking } from "react-native";
 import {
+  deleteProject,
   getProject,
   launchProject,
   stopProject,
@@ -8,9 +9,9 @@ import {
 } from "@/lib/api";
 
 /**
- * Project lifecycle actions (start / open / stop) for the chat and settings
- * screens. Starting launches Metro WITHOUT opening Expo Go — the user opens
- * the running app manually via `open`. Owns the in-flight flags and the
+ * Project lifecycle actions (start / open / stop / delete) for the chat and
+ * settings screens. Starting launches Metro WITHOUT opening Expo Go — the user
+ * opens the running app manually via `open`. Owns the in-flight flags and the
  * polling needed to observe the launched state.
  */
 export interface UseProjectActionsArgs {
@@ -22,6 +23,8 @@ export interface UseProjectActionsArgs {
   onProjectChange?: (p: ProjectDetail) => void;
   /** Called with a user-facing message on failure. */
   onError?: (message: string) => void;
+  /** Called after a successful delete, so the caller can clean up + navigate. */
+  onDeleted?: () => void;
 }
 
 export function useProjectActions({
@@ -29,9 +32,11 @@ export function useProjectActions({
   expUrl,
   onProjectChange,
   onError,
+  onDeleted,
 }: UseProjectActionsArgs) {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   /** Start the app (Metro) without opening it — the user opens manually. */
   const start = useCallback(async () => {
@@ -81,5 +86,19 @@ export function useProjectActions({
     }
   }, [projectId, onProjectChange, onError]);
 
-  return { starting, stopping, start, open, stop };
+  /** Permanently delete the project (server removes files, Metro, and rows). */
+  const remove = useCallback(async () => {
+    if (!projectId) return;
+    setRemoving(true);
+    try {
+      await deleteProject(projectId);
+      onDeleted?.();
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRemoving(false);
+    }
+  }, [projectId, onDeleted, onError]);
+
+  return { starting, stopping, removing, start, open, stop, remove };
 }

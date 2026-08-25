@@ -12,6 +12,8 @@ interface ProjectState {
   details: Record<string, ProjectDetail>;
   setProjects: (projects: Project[]) => void;
   setProjectDetail: (detail: ProjectDetail) => void;
+  /** Drop a project from the list and details (after server-side delete). */
+  removeProject: (id: string) => void;
   /** Refresh the list; prefetch details for projects we don't have yet. */
   refreshProjects: () => Promise<void>;
   /** Fetch one project's full detail and cache it. */
@@ -26,6 +28,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setProjectDetail: (detail) =>
     set((s) => ({ details: { ...s.details, [detail.id]: detail } })),
+
+  removeProject: (id) =>
+    set((s) => {
+      const details = { ...s.details };
+      delete details[id];
+      return {
+        projects: s.projects.filter((p) => p.id !== id),
+        details,
+      };
+    }),
 
   refreshProjects: async () => {
     const projects = await listProjects();

@@ -94,6 +94,11 @@ export async function stopProject(id: string): Promise<{ project: Project }> {
   return json(res);
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`${await base()}/api/projects/${id}`, { method: "DELETE" });
+  await json<{ ok: boolean }>(res);
+}
+
 export async function health(): Promise<{ ok: boolean; defaultAgent: string; model: string }> {
   const res = await fetch(`${await base()}/api/health`);
   return json(res);

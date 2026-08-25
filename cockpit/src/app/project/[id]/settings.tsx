@@ -1,20 +1,28 @@
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
+import { useProjectStore } from "@/lib/project-store";
 import { statusColor } from "@/lib/status";
 import { EventRow } from "@/components/event-row";
+import { DangerZone } from "@/components/danger-zone";
 
 /** Project settings — everything that doesn't belong on the chat page. */
 export default function ProjectSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { project, error, setProject, setError } = useProject(id);
+  const removeProject = useProjectStore((s) => s.removeProject);
   const actions = useProjectActions({
     projectId: id,
     expUrl: project?.exp_url,
     onProjectChange: setProject,
     onError: setError,
+    onDeleted: () => {
+      // Drop the project from the local store, then leave the settings screen.
+      removeProject(id);
+      router.replace("/");
+    },
   });
 
   // iOS header is transparent → scroll content must start below it there.
@@ -63,6 +71,8 @@ export default function ProjectSettingsScreen() {
       {(project?.events ?? []).slice(-50).map((e) => (
         <EventRow key={e.id} type={e.type} message={e.message} />
       ))}
+
+      <DangerZone onDelete={actions.remove} removing={actions.removing} />
 
       {error && <Text style={styles.error}>{error}</Text>}
     </ScrollView>

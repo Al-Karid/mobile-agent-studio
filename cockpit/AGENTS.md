@@ -14,18 +14,19 @@
   `.android`/`.ios` file splits. Native iOS sheets
   (`presentation: "formSheet"`) are the norm.
 
-## UI — mainly native SwiftUI via `expo/ui`
+## UI — native-first via `expo/ui`, RN fallback
 
-- Prefer **`@expo/ui/swift-ui`** native controls over hand-rolled RN ones:
+- **Use native components from `@expo/ui/swift-ui` whenever one is available**:
   `Button`, `Image` (`systemName` SF Symbols), `Label`, `Toggle`, `Picker`,
-  `TextField`, `VStack`/`HStack`, … wrapped in a `Host` (use `matchContents`
-  to size the host to its content).
+  `TextField`, `ProgressView`, `ConfirmationDialog`, `Alert`, `VStack`/`HStack`,
+  … wrapped in a `Host` (use `matchContents` to size the host to its content).
 - Apply styling via `@expo/ui/swift-ui/modifiers`
   (`buttonStyle`, `buttonBorderShape`, `controlSize`, `tint`, `frame`,
-  `padding`, `disabled`, `accessibilityLabel`, …).
-- RN primitives (`View`, `Text`, `ScrollView`, `TextInput`) are still fine for
-  layout and text content — reach for SwiftUI when the platform has a real
-  native control (buttons, toggles, segmented pickers, …).
+  `padding`, `disabled`, `role`, `accessibilityLabel`, `pickerStyle`, …).
+- **Fall back to React Native only when `expo/ui` has no matching component**
+  (e.g. `View`, `Text`, `ScrollView`, `TextInput` for layout/text content, or
+  RN `Alert` where a SwiftUI dialog isn't mounted). Never hand-roll an RN
+  control when a native `expo/ui` one exists.
 - Prefer SF Symbols through SwiftUI `Image systemName` / `Label` over icon
   fonts (`@expo/vector-icons`) or `expo-symbols`.
 - **Sheets**: formSheet screens render their own in-content header
