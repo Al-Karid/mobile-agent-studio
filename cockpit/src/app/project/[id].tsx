@@ -1,6 +1,13 @@
 import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
@@ -10,7 +17,6 @@ import { useProjectActions } from "@/hooks/use-project-actions";
 import { statusColor } from "@/lib/status";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInputBar } from "@/components/chat/input-bar";
-import { OpenAppButton } from "@/components/open-app-button";
 import { EventRow } from "@/components/event-row";
 import { LaunchStack } from "@/components/launch-stack";
 
@@ -35,7 +41,6 @@ export default function ProjectChatScreen() {
   } = useChat(id);
   const actions = useProjectActions({
     projectId: id,
-    status: project?.status,
     expUrl: project?.exp_url,
     onProjectChange: setProject,
     onError: setError,
@@ -45,8 +50,7 @@ export default function ProjectChatScreen() {
   // iOS header is transparent → content must start below it there.
   const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
 
-  const openVisible =
-    !!project && (project.status === "ready" || project.status === "launched");
+  const running = project?.status === "launched";
 
   return (
     <View style={styles.container}>
@@ -74,28 +78,69 @@ export default function ProjectChatScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderButton
-              onPress={() => router.push(`/project/${id}/settings`)}
-              accessibilityLabel="Project settings"
-              testID="project-settings-button"
-            >
-              <Ionicons name="settings-outline" size={22} color="#111" />
-            </HeaderButton>
+            <>
+              {running ? (
+                <>
+                  <HeaderButton
+                    onPress={actions.open}
+                    accessibilityLabel="Open app"
+                    testID="open-app-button"
+                  >
+                    <Ionicons name="open-outline" size={22} color="#111" />
+                  </HeaderButton>
+                  <HeaderButton
+                    onPress={actions.stop}
+                    accessibilityLabel="Stop app"
+                    testID="stop-app-button"
+                  >
+                    {actions.stopping ? (
+                      <ActivityIndicator size="small" color="#ff3b30" />
+                    ) : (
+                      <Ionicons name="stop" size={22} color="#ff3b30" />
+                    )}
+                  </HeaderButton>
+                </>
+              ) : (
+                <HeaderButton
+                  onPress={actions.start}
+                  accessibilityLabel="Start app"
+                  testID="start-app-button"
+                >
+                  {actions.starting ? (
+                    <ActivityIndicator size="small" color="#111" />
+                  ) : (
+                    <Ionicons name="play-outline" size={22} color="#111" />
+                  )}
+                </HeaderButton>
+              )}
+
+              <HeaderButton
+                onPress={() => router.push(`/project/${id}/settings`)}
+                accessibilityLabel="Project settings"
+                testID="project-settings-button"
+              >
+                <Ionicons name="settings-outline" size={22} color="#111" />
+              </HeaderButton>
+            </>
           ),
         }}
       />
 
-      {/* slim bar: project name + status dot + Open action (below transparent header) */}
+      {/* slim bar: project name + status dot (below transparent header) */}
       <View style={[styles.bar, { paddingTop: headerTopInset }]}>
         <View style={styles.titleWrap}>
           {project && (
-            <View style={[styles.dot, { backgroundColor: statusColor(project.status) }]} />
+            <View
+              style={[
+                styles.dot,
+                { backgroundColor: statusColor(project.status) },
+              ]}
+            />
           )}
           <Text style={styles.name} numberOfLines={1}>
             {project?.name ?? "…"}
           </Text>
         </View>
-        <OpenAppButton onPress={actions.open} busy={actions.opening} visible={openVisible} />
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -107,7 +152,9 @@ export default function ProjectChatScreen() {
         contentContainerStyle={styles.messagesContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {timeline.length === 0 && (
           <Text style={styles.empty}>Ask me to build or change this app…</Text>
@@ -133,7 +180,7 @@ export default function ProjectChatScreen() {
               message={item.message}
               ongoing={item.ongoing}
             />
-          )
+          ),
         )}
       </ScrollView>
 
@@ -143,7 +190,9 @@ export default function ProjectChatScreen() {
         onChangeText={setInput}
         onSend={send}
         busy={busy}
-        onKeyboardShow={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        onKeyboardShow={() =>
+          scrollRef.current?.scrollToEnd({ animated: true })
+        }
       />
       {sendError && <Text style={styles.error}>{sendError}</Text>}
     </View>
@@ -164,8 +213,6 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -177,5 +224,3 @@ const styles = StyleSheet.create({
   empty: { textAlign: "center", color: "#999", marginTop: 60, fontSize: 14 },
   error: { color: "#c00", fontSize: 12, paddingHorizontal: 16, paddingTop: 6 },
 });
-
-

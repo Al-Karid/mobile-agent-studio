@@ -1,4 +1,4 @@
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProject } from "@/hooks/use-project";
@@ -12,7 +12,6 @@ export default function ProjectSettingsScreen() {
   const { project, error, setProject, setError } = useProject(id);
   const actions = useProjectActions({
     projectId: id,
-    status: project?.status,
     expUrl: project?.exp_url,
     onProjectChange: setProject,
     onError: setError,
@@ -52,9 +51,9 @@ export default function ProjectSettingsScreen() {
         Created: {project ? new Date(project.created_at).toLocaleString() : ""}
       </Text>
       {project?.exp_url && (
-        <Text style={[styles.row, styles.mono]} selectable>
-          URL: {project.exp_url}
-        </Text>
+        <Pressable onPress={() => Linking.openURL(project.exp_url!).catch(() => {})}>
+          <Text style={[styles.row, styles.mono]}>URL: {project.exp_url}</Text>
+        </Pressable>
       )}
 
       <Text style={styles.section}>Original prompt</Text>

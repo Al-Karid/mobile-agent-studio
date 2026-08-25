@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import type { TimelineEventItem } from "@/lib/events";
 import { EventRow } from "@/components/event-row";
 
@@ -15,18 +22,28 @@ export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
   const launches = events.filter(
     (e) => e.type === "ready" && e.message.startsWith("exp://")
   );
-  const stopped = events.some((e) => e.message === "App stopped");
   const ongoing = events.some((e) => e.ongoing);
   const count = launches.length;
-  const primary = launches.length > 0 ? launches[launches.length - 1].message : "";
+  const label = count > 1 ? `App launched ×${count}` : "App launched";
+  // Reflect the CURRENT state of the group: the last event decides.
+  const lastEvent = events[events.length - 1];
+  const isRunning = count > 0 && lastEvent?.message !== "App stopped";
+  const isStopped = lastEvent?.message === "App stopped";
 
-  const summary = [
-    count > 1 ? `App launched ×${count}` : "App launched",
-    primary && `— ${primary}`,
-    stopped && "· stopped",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // Shimmer: breathing pulse on the "running" label while the app is live.
+  const shimmer = useSharedValue(1);
+  useEffect(() => {
+    if (isRunning) {
+      shimmer.value = withRepeat(
+        withSequence(withTiming(0.35, { duration: 700 }), withTiming(1, { duration: 700 })),
+        -1,
+        true
+      );
+    } else {
+      shimmer.value = 1;
+    }
+  }, [isRunning, shimmer]);
+  const shimmerStyle = useAnimatedStyle(() => ({ opacity: shimmer.value }));
 
   return (
     <View style={styles.box}>
@@ -42,7 +59,13 @@ export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
           <Ionicons name="rocket-outline" size={15} color="#4aa3ff" />
         )}
         <Text style={styles.title} numberOfLines={1}>
-          {summary}
+          {label}
+          {isRunning || isStopped ? " · " : null}
+          {isRunning ? (
+            <Animated.Text style={[styles.runningText, shimmerStyle]}>running</Animated.Text>
+          ) : isStopped ? (
+            <Text style={styles.stoppedText}>stopped</Text>
+          ) : null}
         </Text>
         <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={14} color="#999" />
       </Pressable>
@@ -73,6 +96,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   title: { flex: 1, fontSize: 13, fontWeight: "600", color: "#333" },
+  runningText: { color: "#2ecc40", fontWeight: "700" },
+  stoppedText: { color: "#8a8f98", fontWeight: "700" },
   body: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#e2e3e5",

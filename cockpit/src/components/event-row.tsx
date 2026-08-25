@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { ComponentProps } from "react";
+import { LinkText } from "@/components/link-text";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -53,9 +54,15 @@ export function EventRow({
           color={error ? "#c00" : ic.color}
         />
       )}
-      <Text style={[styles.msg, error && styles.msgError]} numberOfLines={3}>
-        {message}
-      </Text>
+      {message.startsWith("exp://") ? (
+        <LinkText url={message} style={styles.msg}>
+          {message}
+        </LinkText>
+      ) : (
+        <Text style={[styles.msg, error && styles.msgError]} numberOfLines={3}>
+          {message}
+        </Text>
+      )}
     </View>
   );
 }
