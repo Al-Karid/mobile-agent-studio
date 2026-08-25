@@ -28,10 +28,19 @@ test("validateDeps: native modules outside the allow-list are flagged", () => {
   assert.deepEqual([...r.violations].sort(), ["@gorhom/bottom-sheet", "react-native-vision-camera"]);
 });
 
-test("validateDeps: @expo/ui, @react-navigation, expo-* are allowed", () => {
+test("validateDeps: @expo/ui is flagged (dropped from the project's UI stack)", () => {
   const r = validateDeps({
     dependencies: {
       "@expo/ui": "~57.0.0",
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.violations, ["@expo/ui"]);
+});
+
+test("validateDeps: @react-navigation and expo-* are allowed", () => {
+  const r = validateDeps({
+    dependencies: {
       "@react-navigation/native": "^7.0.0",
       "expo-camera": "~57.0.0",
       "expo-sqlite": "~57.0.0",

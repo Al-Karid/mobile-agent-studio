@@ -1,14 +1,13 @@
-import { Button, Host, Image } from "@expo/ui/swift-ui";
-import {
-  accessibilityLabel,
-  buttonBorderShape,
-  buttonStyle,
-  controlSize,
-  frame,
-  tint,
-} from "@expo/ui/swift-ui/modifiers";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface SheetHeaderProps {
   title: string;
@@ -26,8 +25,8 @@ interface SheetHeaderProps {
  *
  * The liquid-glass sheets have NO native header (react-native-screens formSheet
  * bugs #3092 / #4275 hide the content when a native header is used), so every
- * sheet screen renders this header itself: ✕ close (native SF Symbol), title/
- * subtitle, and an optional right-side action.
+ * sheet screen renders this header itself: ✕ close, title/subtitle, and an
+ * optional right-side action.
  */
 export function SheetHeader({
   title,
@@ -39,23 +38,16 @@ export function SheetHeader({
 }: SheetHeaderProps) {
   return (
     <View style={[styles.header, style]}>
-      {/* Native SwiftUI close button (bordered xmark) wrapped in a Host. */}
-      <Host style={styles.closeHost} matchContents>
-        <Button
-          onPress={onClose}
-          testID={closeTestID}
-          modifiers={[
-            buttonStyle("bordered"),
-            buttonBorderShape("circle"),
-            controlSize("regular"),
-            frame({ width: 36, height: 36 }),
-            tint("#1C1C1E"),
-            accessibilityLabel("Close"),
-          ]}
-        >
-          <Image systemName="xmark" size={15} />
-        </Button>
-      </Host>
+      <Pressable
+        onPress={onClose}
+        testID={closeTestID}
+        hitSlop={8}
+        style={({ pressed }) => [styles.closeButton, pressed && styles.closePressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+      >
+        <Ionicons name="close" size={17} color="#1C1C1E" />
+      </Pressable>
       <View style={styles.headerText}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -79,11 +71,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     zIndex: 1,
   },
-  closeHost: {
-    // Wraps the native SwiftUI button tightly (matchContents) so it stays
-    // within the header's content padding and never overflows the row.
-    alignSelf: "center",
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
   },
+  closePressed: { opacity: 0.6 },
   headerText: { flex: 1 },
   title: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, color: "#111" },
   subtitle: { marginTop: 2, fontSize: 13, color: "#6B7280" },

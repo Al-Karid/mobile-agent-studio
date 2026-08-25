@@ -27,7 +27,10 @@ const AGENT_CONTEXT = `You are generating an Expo (React Native) app that MUST r
 
 Hard rules:
 - Target the LATEST Expo SDK.
-- Use expo-router for navigation and @expo/ui for native UI (sheets, pickers, toggles, menus) — never community libraries like @gorhom/bottom-sheet when @expo/ui provides it.
+- Use expo-router for navigation and PLAIN React Native components for all UI
+  (View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert,
+  Modal) with @expo/vector-icons for icons. Do NOT use @expo/ui or community
+  native UI libraries like @gorhom/bottom-sheet — built-in RN controls only.
 - Only depend on packages in the Expo Go allow-list (expo-* modules + the official third-party list). If the user asks for something outside it, choose an Expo Go-safe alternative instead.
 - Run \`npx tsc --noEmit\` and fix all errors before finishing.
 - Never create or edit ios/ or android/ by hand (Continuous Native Generation).

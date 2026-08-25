@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -7,15 +9,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Button, Host, ProgressView, Text as SwiftText } from "@expo/ui/swift-ui";
-import {
-  accessibilityLabel,
-  buttonBorderShape,
-  buttonStyle,
-  controlSize,
-  disabled,
-  tint,
-} from "@expo/ui/swift-ui/modifiers";
 import { createProject, type ProjectPlatform } from "@/lib/api";
 import { noApiKeys, useAgentAvailability } from "@/lib/agent-keys";
 import { AgentSelector } from "@/components/agent-selector";
@@ -79,22 +72,23 @@ export default function NewProjectScreen() {
         subtitle="Describe an app and we&apos;ll build it"
         onClose={() => router.back()}
         right={
-          <Host style={styles.createHost} matchContents>
-            <Button
-              onPress={submit}
-              testID="create-project-button"
-              modifiers={[
-                buttonStyle("borderedProminent"),
-                buttonBorderShape("capsule"),
-                controlSize("regular"),
-                tint("#111"),
-                disabled(!name.trim() || !prompt.trim()),
-                accessibilityLabel("Create project"),
-              ]}
-            >
-              {busy ? <ProgressView /> : <SwiftText>Create</SwiftText>}
-            </Button>
-          </Host>
+          <Pressable
+            onPress={submit}
+            testID="create-project-button"
+            disabled={!name.trim() || !prompt.trim() || busy}
+            style={({ pressed }) => [
+              styles.createButton,
+              (!name.trim() || !prompt.trim() || busy) && styles.createDisabled,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+          >
+            {busy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createText}>Create</Text>
+            )}
+          </Pressable>
         }
       />
 
@@ -197,9 +191,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   errorText: { flex: 1, color: "#DC2626", fontSize: 13 },
-  createHost: {
-    // Wraps the native SwiftUI Create button tightly (matchContents) so it
-    // stays within the header's content padding and never overflows the row.
-    alignSelf: "center",
+  createButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#111",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 76,
   },
+  createText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  createDisabled: { opacity: 0.35 },
+  pressed: { opacity: 0.8 },
 });

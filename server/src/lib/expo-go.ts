@@ -44,6 +44,11 @@ const CORE = new Set([
   "expo",
 ]);
 
+// Packages the project deliberately does NOT support even though Expo Go
+// bundles them. @expo/ui was dropped from the UI stack — generated apps must
+// use plain React Native components (see jobs/generate.ts AGENT_CONTEXT).
+const DENIED = new Set(["@expo/ui"]);
+
 export interface DepValidation {
   ok: boolean;
   violations: string[];
@@ -55,6 +60,7 @@ function isExpoModule(name: string): boolean {
 }
 
 function isAllowed(name: string): boolean {
+  if (DENIED.has(name)) return false;
   return (
     CORE.has(name) ||
     isExpoModule(name) ||

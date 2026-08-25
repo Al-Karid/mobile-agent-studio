@@ -1,13 +1,4 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import {
-  Button,
-  ConfirmationDialog,
-  Host,
-  ProgressView,
-  Text as SwiftText,
-} from "@expo/ui/swift-ui";
-import { buttonStyle, disabled, tint } from "@expo/ui/swift-ui/modifiers";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 interface DangerZoneProps {
   /** Destructive action to run after the user confirms (e.g. delete project). */
@@ -18,56 +9,41 @@ interface DangerZoneProps {
 
 /**
  * Destructive section styled like the other settings cards: always visible,
- * with the native delete button + confirmation dialog. Confirmation state
+ * with the delete button + native confirmation alert. Confirmation state
  * lives here; the caller just supplies the delete callback.
  */
 export function DangerZone({ onDelete, removing = false }: DangerZoneProps) {
-  const [confirmVisible, setConfirmVisible] = useState(false);
+  function confirmDelete() {
+    Alert.alert(
+      "Delete project?",
+      "This permanently deletes the project, its runs, events and generated app. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: onDelete },
+      ]
+    );
+  }
 
   return (
     <View style={styles.card}>
       <Text style={styles.header}>Danger zone</Text>
       <View style={styles.divider} />
-      <Host style={styles.deleteHost}>
-        <ConfirmationDialog
-          title="Delete project?"
-          isPresented={confirmVisible}
-          onIsPresentedChange={setConfirmVisible}
-        >
-          <ConfirmationDialog.Trigger>
-            <Button
-              onPress={() => setConfirmVisible(true)}
-              modifiers={[
-                buttonStyle("bordered"),
-                tint("#ff4136"),
-                disabled(removing),
-              ]}
-            >
-              {removing ? <ProgressView /> : <SwiftText>Delete project</SwiftText>}
-            </Button>
-          </ConfirmationDialog.Trigger>
-          <ConfirmationDialog.Message>
-            <SwiftText>
-              This permanently deletes the project, its runs, events and
-              generated app. This can&apos;t be undone.
-            </SwiftText>
-          </ConfirmationDialog.Message>
-          <ConfirmationDialog.Actions>
-            <Button role="cancel" onPress={() => setConfirmVisible(false)}>
-              <SwiftText>Cancel</SwiftText>
-            </Button>
-            <Button
-              role="destructive"
-              onPress={() => {
-                setConfirmVisible(false);
-                onDelete();
-              }}
-            >
-              <SwiftText>Delete</SwiftText>
-            </Button>
-          </ConfirmationDialog.Actions>
-        </ConfirmationDialog>
-      </Host>
+      <Pressable
+        onPress={confirmDelete}
+        disabled={removing}
+        style={({ pressed }) => [
+          styles.deleteButton,
+          pressed && styles.pressed,
+          removing && styles.disabled,
+        ]}
+        accessibilityRole="button"
+      >
+        {removing ? (
+          <ActivityIndicator color="#ff4136" />
+        ) : (
+          <Text style={styles.deleteText}>Delete project</Text>
+        )}
+      </Pressable>
       <Text style={styles.hint}>
         Removes the project, its runs, events and generated app permanently.
       </Text>
@@ -92,12 +68,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#fecaca" },
-  deleteHost: {
-    // Fixed frame — no matchContents: a ConfirmationDialog reports an unstable
-    // content size to the host, which made the button drift on scroll.
+  deleteButton: {
     alignSelf: "flex-start",
-    width: 130,
-    height: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#ff4136",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
+  deleteText: { color: "#ff4136", fontWeight: "600" },
+  pressed: { opacity: 0.8 },
+  disabled: { opacity: 0.4 },
   hint: { fontSize: 12, color: "#b91c1c", lineHeight: 16 },
 });

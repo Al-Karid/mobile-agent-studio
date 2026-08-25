@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
-import { Button, Host, ProgressView, Text as SwiftText } from "@expo/ui/swift-ui";
-import { buttonStyle, disabled, tint } from "@expo/ui/swift-ui/modifiers";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { useProjectStore } from "@/lib/project-store";
@@ -134,14 +132,22 @@ export default function ProjectSettingsScreen() {
       </View>
 
       {running && (
-        <Host style={styles.stopHost} matchContents>
-          <Button
-            onPress={actions.stop}
-            modifiers={[buttonStyle("bordered"), tint("#ff4136"), disabled(actions.stopping)]}
-          >
-            {actions.stopping ? <ProgressView /> : <SwiftText>Stop app</SwiftText>}
-          </Button>
-        </Host>
+        <Pressable
+          onPress={actions.stop}
+          disabled={actions.stopping}
+          style={({ pressed }) => [
+            styles.stopButton,
+            pressed && styles.pressed,
+            actions.stopping && styles.stopDisabled,
+          ]}
+          accessibilityRole="button"
+        >
+          {actions.stopping ? (
+            <ActivityIndicator color="#ff4136" />
+          ) : (
+            <Text style={styles.stopText}>Stop app</Text>
+          )}
+        </Pressable>
       )}
 
       {/* Details */}
@@ -325,6 +331,19 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.4 },
   primaryText: { color: "#fff", fontWeight: "700" },
-  stopHost: { alignSelf: "flex-start" },
+  stopButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#ff4136",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  stopText: { color: "#ff4136", fontWeight: "600" },
+  stopDisabled: { opacity: 0.4 },
+  pressed: { opacity: 0.8 },
   error: { color: "#c00", fontSize: 13 },
 });

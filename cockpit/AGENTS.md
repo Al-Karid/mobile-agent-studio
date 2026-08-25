@@ -44,22 +44,19 @@
   `.android`/`.ios` file splits. Native iOS sheets
   (`presentation: "formSheet"`) are the norm.
 
-## UI — native-first via `expo/ui`, RN fallback
+## UI — React Native components only (no `@expo/ui`)
 
-- **Use native components from `@expo/ui/swift-ui` whenever one is available**:
-  `Button`, `Image` (`systemName` SF Symbols), `Label`, `Toggle`, `Picker`,
-  `TextField`, `ProgressView`, `ConfirmationDialog`, `Alert`, `VStack`/`HStack`,
-  … wrapped in a `Host` (use `matchContents` to size the host to its content).
-- Apply styling via `@expo/ui/swift-ui/modifiers`
-  (`buttonStyle`, `buttonBorderShape`, `controlSize`, `tint`, `frame`,
-  `padding`, `disabled`, `role`, `accessibilityLabel`, `pickerStyle`, …).
-- **Fall back to React Native only when `expo/ui` has no matching component**
-  (e.g. `View`, `Text`, `ScrollView`, `TextInput` for layout/text content, or
-  RN `Alert` where a SwiftUI dialog isn't mounted). Never hand-roll an RN
-  control when a native `expo/ui` one exists.
-- Prefer SF Symbols through SwiftUI `Image systemName` / `Label` over icon
-  fonts (`@expo/vector-icons`) or `expo-symbols`.
+- **All UI is plain React Native** (`View`, `Text`, `Pressable`, `TextInput`,
+  `ScrollView`, `ActivityIndicator`, `Alert`, `Modal`, …) plus
+  `@expo/vector-icons` `Ionicons`. There is **no `@expo/ui` dependency** — do
+  not add it back.
+- Buttons are `Pressable`s styled to match the app (primary = dark filled pill,
+  ghost = bordered white, danger = red-bordered). Busy states use
+  `ActivityIndicator`; pressed feedback via `({ pressed }) => …` opacity.
+- Confirmations use RN `Alert.alert` with a destructive button (sign-out in
+  `/settings`, Danger Zone delete).
+- Dropdowns / pickers (e.g. the model pickers in `/settings`) are a `Pressable`
+  row that opens a `Modal` option list.
 - **Sheets**: formSheet screens render their own in-content header
-  (`src/components/sheet-header.tsx`) with a SwiftUI close button — never use a
-  native header inside a formSheet (react-native-screens #3092 / #4275 hide
-  content).
+  (`src/components/sheet-header.tsx`, RN ✕ `Pressable`) — never use a native
+  header inside a formSheet (react-native-screens #3092 / #4275 hide content).
