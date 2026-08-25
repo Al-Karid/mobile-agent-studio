@@ -59,7 +59,7 @@ export default function ProjectsScreen() {
       <FlatList
         data={projects}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+        contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>
         }

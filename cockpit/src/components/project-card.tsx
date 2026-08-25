@@ -1,9 +1,37 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Link } from "expo-router";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import type { Project } from "@/lib/api";
 import { useProjectStore } from "@/lib/project-store";
 import { statusColor, statusLabel } from "@/lib/status";
+
+/** Statuses that mean "the agent is working right now". */
+const WORKING = new Set(["initializing", "generating", "qa", "launching"]);
+
+const AGENT_LABEL: Record<string, string> = {
+  "dry-run": "Dry run",
+  cline: "Cline",
+};
+
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** "just now", "5m ago", "2h ago", then a short date. */
+function relativeTime(ts: number): string {
+  const m = Math.floor((Date.now() - ts) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return formatDate(ts);
+}
 
 /**
  * One project card — reads its live state from the shared store, so the list
@@ -12,12 +40,19 @@ import { statusColor, statusLabel } from "@/lib/status";
 export function ProjectCard({ item }: { item: Project }) {
   const status = useProjectStore((s) => s.details[item.id]?.status ?? item.status);
   const color = statusColor(status);
+  const working = WORKING.has(status);
 
   return (
-    <Link href={`/project/${item.id}`} asChild>
-      <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+    <Pressable
+      onPress={() => router.push(`/project/${item.id}`)}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
         <View style={styles.header}>
-          <View style={[styles.dot, { backgroundColor: color }]} />
+          {working ? (
+            <ActivityIndicator size={12} color={color} />
+          ) : (
+            <View style={[styles.dot, { backgroundColor: color }]} />
+          )}
           <Text style={styles.name} numberOfLines={1}>
             {item.name}
           </Text>
@@ -31,28 +66,34 @@ export function ProjectCard({ item }: { item: Project }) {
         </Text>
 
         <View style={styles.footer}>
-          <Text style={styles.meta}>{new Date(item.created_at).toLocaleDateString()}</Text>
+          <View style={styles.metaGroup}>
+            {AGENT_LABEL[item.agent] && (
+              <View style={styles.agentChip}>
+                <Ionicons
+                  name={item.agent === "cline" ? "sparkles" : "flash"}
+                  size={11}
+                  color="#8b5cf6"
+                />
+                <Text style={styles.agentText}>{AGENT_LABEL[item.agent]}</Text>
+              </View>
+            )}
+            <Ionicons name="time-outline" size={13} color="#9CA3AF" />
+            <Text style={styles.meta}>{relativeTime(item.updated_at)}</Text>
+          </View>
           <Ionicons name="chevron-forward" size={16} color="#C4C4C6" />
         </View>
       </Pressable>
-    </Link>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 16,
+    backgroundColor: "#fcfcfb",
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    borderRadius: 22,
     padding: 16,
     gap: 8,
-    // soft shadow → the cards float on the light canvas
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   cardPressed: { opacity: 0.75 },
   header: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -66,5 +107,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  metaGroup: { flexDirection: "row", alignItems: "center", gap: 5 },
+  agentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F3F0FF",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  agentText: { fontSize: 12, fontWeight: "600", color: "#6d28d9" },
   meta: { fontSize: 12, color: "#9CA3AF" },
 });
