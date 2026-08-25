@@ -1,10 +1,12 @@
 import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
 import { useChat } from "@/hooks/use-chat";
 import { useProjectActions } from "@/hooks/use-project-actions";
+import { useKeyboardSpacer } from "@/hooks/use-keyboard";
 import { statusColor } from "@/lib/status";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInputBar } from "@/components/chat/input-bar";
@@ -30,6 +32,12 @@ export default function ProjectChatScreen() {
 
   const openVisible =
     !!project && (project.status === "ready" || project.status === "launched");
+
+  // Keyboard-aware spacer: lifts the input above the keyboard smoothly and
+  // scrolls the conversation to the bottom when the keyboard opens.
+  const keyboardSpacerStyle = useKeyboardSpacer((h) => {
+    if (h > 0) scrollRef.current?.scrollToEnd({ animated: true });
+  });
 
   return (
     <View style={styles.container}>
@@ -67,6 +75,8 @@ export default function ProjectChatScreen() {
         ref={scrollRef}
         style={styles.messages}
         contentContainerStyle={styles.messagesContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         {turns.length === 0 && (
@@ -79,6 +89,7 @@ export default function ProjectChatScreen() {
 
       {/* input */}
       <ChatInputBar value={input} onChangeText={setInput} onSend={send} busy={busy} />
+      <Animated.View style={keyboardSpacerStyle} />
       {sendError && <Text style={styles.error}>{sendError}</Text>}
     </View>
   );
