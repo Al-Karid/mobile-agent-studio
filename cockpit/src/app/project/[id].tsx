@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { getProject, launchProject, type ProjectDetail } from "@/lib/api";
+import { useCorrection } from "@/hooks/use-correction";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "#8a8f98",
@@ -68,6 +69,8 @@ export default function ProjectScreen() {
   const color = STATUS_COLORS[status] ?? "#999";
   const canLaunch = status === "ready" || status === "launched";
 
+  const correction = useCorrection({ projectId: id, status });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.name}>{project?.name ?? "…"}</Text>
@@ -83,6 +86,7 @@ export default function ProjectScreen() {
       )}
 
       {error && <Text style={styles.error}>{error}</Text>}
+      {correction.error && <Text style={styles.error}>{correction.error}</Text>}
 
       {canLaunch && (
         <Pressable onPress={launch} disabled={launching} style={styles.launchBtn}>
@@ -91,6 +95,30 @@ export default function ProjectScreen() {
           </Text>
         </Pressable>
       )}
+
+      <Text style={styles.sectionTitle}>Request changes</Text>
+      <TextInput
+        style={[styles.input, styles.textarea]}
+        value={correction.correction}
+        onChangeText={correction.setCorrection}
+        placeholder="e.g. Switch to a dark theme and add a second screen…"
+        placeholderTextColor="#999"
+        multiline
+        textAlignVertical="top"
+        editable={!correction.busy}
+      />
+      <Pressable
+        onPress={correction.applyChanges}
+        disabled={correction.busy || !correction.correction.trim()}
+        style={[
+          styles.correctBtn,
+          (correction.busy || !correction.correction.trim()) && { opacity: 0.4 },
+        ]}
+      >
+        <Text style={styles.correctText}>
+          {correction.busy ? "Working…" : "Apply changes"}
+        </Text>
+      </Pressable>
 
       <Text style={styles.sectionTitle}>Prompt</Text>
       <Text style={styles.prompt}>{project?.prompt ?? ""}</Text>
@@ -133,4 +161,22 @@ const styles = StyleSheet.create({
   eventRow: { flexDirection: "row", gap: 10, marginTop: 6 },
   eventType: { color: "#999", fontSize: 12, width: 70 },
   eventMsg: { color: "#333", fontSize: 13, flex: 1 },
+  input: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    color: "#111",
+  },
+  textarea: { minHeight: 90 },
+  correctBtn: {
+    marginTop: 10,
+    backgroundColor: "#111",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  correctText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

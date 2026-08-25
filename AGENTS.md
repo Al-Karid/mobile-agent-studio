@@ -67,6 +67,10 @@ cline -c <dir> -P deepseek -m deepseek-v4-flash --thinking none --json "<prompt>
 - Async jobs are single-process for V1 (no Redis/BullMQ). See `server/src/lib/queue.ts`.
 - Never commit secrets. `.env` is gitignored; `.env.example` documents the shape.
 - DB access goes through `server/src/lib/db.ts` functions, never raw SQL from outside.
+- **Never build features inline.** A feature lives in a dedicated module —
+  stateful logic → `cockpit/src/hooks/*`, API/pure logic → `cockpit/src/lib/*`,
+  reusable UI → `cockpit/src/components/*`. Screens/routes orchestrate; they
+  don't implement.
 
 ## Pitfalls (learned the hard way)
 
