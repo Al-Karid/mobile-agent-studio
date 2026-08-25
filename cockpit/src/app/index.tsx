@@ -1,47 +1,11 @@
 import { useCallback, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { Link, Stack, router, useFocusEffect } from "expo-router";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
+import { Stack, router, useFocusEffect } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProjectStore } from "@/lib/project-store";
-import type { Project } from "@/lib/api";
-
-const STATUS_COLORS: Record<string, string> = {
-  created: "#8a8f98",
-  initializing: "#f5a623",
-  generating: "#f5a623",
-  qa: "#f5a623",
-  ready: "#2ecc40",
-  launching: "#f5a623",
-  launched: "#4aa3ff",
-  needs_dev_build: "#ff4136",
-  awaiting_input: "#8b5cf6",
-  failed: "#ff4136",
-  interrupted: "#ff851b",
-};
-
-/** One project card — reads its live state from the shared store. */
-function ProjectCard({ item }: { item: Project }) {
-  const status = useProjectStore((s) => s.details[item.id]?.status ?? item.status);
-  const color = STATUS_COLORS[status] ?? "#999";
-
-  return (
-    <Link href={`/project/${item.id}`} asChild>
-      <Pressable style={styles.card}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={styles.name}>{item.name}</Text>
-          <View style={[styles.badge, { borderColor: color }]}>
-            <Text style={{ color, fontSize: 11 }}>{status}</Text>
-          </View>
-        </View>
-        <Text style={styles.prompt} numberOfLines={2}>
-          {item.prompt}
-        </Text>
-      </Pressable>
-    </Link>
-  );
-}
+import { ProjectCard } from "@/components/project-card";
 
 export default function ProjectsScreen() {
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +59,7 @@ export default function ProjectsScreen() {
       <FlatList
         data={projects}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
+        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>
         }
@@ -106,11 +70,7 @@ export default function ProjectsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  card: { padding: 14, borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 10 },
-  name: { fontSize: 17, fontWeight: "600", color: "#111" },
-  badge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  prompt: { marginTop: 6, fontSize: 13, color: "#666" },
+  container: { flex: 1, backgroundColor: "#F5F5F7", padding: 16 },
   empty: { textAlign: "center", color: "#999", marginTop: 40 },
   error: { color: "#c00", marginBottom: 10, fontSize: 13 },
 });

@@ -8,24 +8,9 @@ import { buttonStyle, disabled, tint } from "@expo/ui/swift-ui/modifiers";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { useProjectStore } from "@/lib/project-store";
-import { statusColor } from "@/lib/status";
+import { statusColor, statusLabel } from "@/lib/status";
 import { EventRow } from "@/components/event-row";
 import { DangerZone } from "@/components/danger-zone";
-
-/** Human-friendly labels for machine statuses (dev + non-dev). */
-const STATUS_LABELS: Record<string, string> = {
-  created: "Created",
-  initializing: "Setting up",
-  generating: "Building",
-  qa: "Reviewing",
-  ready: "Ready",
-  launching: "Launching",
-  launched: "Running",
-  needs_dev_build: "Needs a dev build",
-  awaiting_input: "Waiting for your input",
-  failed: "Failed",
-  interrupted: "Interrupted",
-};
 
 /** One label → value row inside a settings card. */
 function InfoRow({
@@ -100,7 +85,7 @@ export default function ProjectSettingsScreen() {
         </Text>
         <View style={[styles.badge, { borderColor: statusColor(status) }]}>
           <Text style={[styles.badgeText, { color: statusColor(status) }]}>
-            {STATUS_LABELS[status] ?? status}
+            {statusLabel(status)}
           </Text>
         </View>
       </View>

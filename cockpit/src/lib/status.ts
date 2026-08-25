@@ -30,3 +30,22 @@ export const STATUS_STEPS: Record<string, string> = {
 export function statusColor(status: string | undefined): string {
   return (status && STATUS_COLORS[status]) ?? "#999";
 }
+
+/** Human-friendly labels for machine statuses (dev + non-dev). */
+export const STATUS_LABELS: Record<string, string> = {
+  created: "Created",
+  initializing: "Setting up",
+  generating: "Building",
+  qa: "Reviewing",
+  ready: "Ready",
+  launching: "Launching",
+  launched: "Running",
+  needs_dev_build: "Needs a dev build",
+  awaiting_input: "Waiting for your input",
+  failed: "Failed",
+  interrupted: "Interrupted",
+};
+
+export function statusLabel(status: string | undefined): string {
+  return (status && STATUS_LABELS[status]) ?? status ?? "Unknown";
+}
