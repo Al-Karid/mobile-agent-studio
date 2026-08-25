@@ -15,7 +15,8 @@ export default function ProjectsScreen() {
   // iOS header is transparent → the list content must start below it.
   // (Padding lives on the scroll CONTENT, not the container, so the background
   // fills the screen behind the header and cards scroll under it.)
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const headerHeight = useHeaderHeight();
+  const headerTopInset = Platform.OS === "ios" ? headerHeight : 0;
 
   const load = useCallback(() => {
     refreshProjects().catch((e) =>
@@ -64,7 +65,7 @@ export default function ProjectsScreen() {
           { paddingTop: headerTopInset + 16 },
         ]}
         ListHeaderComponent={
-          error ? <Text style={styles.error}>Can't reach server: {error}</Text> : null
+          error ? <Text style={styles.error}>Can&apos;t reach server: {error}</Text> : null
         }
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>

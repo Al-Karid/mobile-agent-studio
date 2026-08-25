@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -65,7 +65,8 @@ export default function ProjectSettingsScreen() {
   });
 
   // iOS header is transparent → scroll content must start below it there.
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const headerHeight = useHeaderHeight();
+  const headerTopInset = Platform.OS === "ios" ? headerHeight : 0;
 
   const status = project?.status ?? "…";
   const running = status === "launched";
@@ -82,14 +83,20 @@ export default function ProjectSettingsScreen() {
   // Agent change — selector is locked to agents the user has a key for.
   const { settings, enabledAgents } = useAgentAvailability();
   const noKeysSet = settings ? noApiKeys(settings) : true;
-  const [agent, setAgent] = useState("");
+  const [agent, setAgent] = useState(project?.agent ?? "");
   const [dirty, setDirty] = useState(false);
   const [savingAgent, setSavingAgent] = useState(false);
 
-  // Keep the selector in sync with the server until the user edits it.
-  useEffect(() => {
-    if (project && !dirty) setAgent(project.agent);
-  }, [project?.agent, dirty]);
+  // Keep the selector in sync with the server until the user edits it. This is
+  // adjusted DURING RENDER (React's "adjusting state when a prop changes"
+  // pattern) instead of in an effect — picks up the async project load and any
+  // server-side agent change, without a cascading render. `dirty` stops the
+  // sync once the user has a pending edit.
+  const [prevAgent, setPrevAgent] = useState(project?.agent ?? "");
+  if (project && !dirty && project.agent !== prevAgent) {
+    setPrevAgent(project.agent);
+    setAgent(project.agent);
+  }
 
   function changeAgent(a: string) {
     setAgent(a);

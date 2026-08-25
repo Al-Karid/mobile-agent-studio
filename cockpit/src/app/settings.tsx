@@ -146,7 +146,8 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState(false);
 
   // iOS header is transparent → scroll content must start below it there.
-  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const headerHeight = useHeaderHeight();
+  const headerTopInset = Platform.OS === "ios" ? headerHeight : 0;
 
   useEffect(() => {
     if (!signedIn) return;

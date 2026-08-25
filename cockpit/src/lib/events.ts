@@ -42,6 +42,8 @@ export interface TimelineLaunchItem {
   kind: "launch";
   id: string;
   events: TimelineEventItem[];
+  /** True when THIS stack holds the live app instance (project.status launched). */
+  running: boolean;
   at: number;
 }
 
@@ -184,6 +186,17 @@ export function buildTimeline(project: ProjectDetail): TimelineItem[] {
 
   const sorted = items.sort((a, b) => a.at - b.at);
 
+  // "running" is a PROJECT-level truth (server status), not an event-inference:
+  // the live instance is the NEWEST exp:// launch, and only while status is
+  // "launched". A stack whose last event is exp:// (e.g. the app was closed
+  // without the explicit Stop action) must NOT spin forever.
+  const appRunning = project.status === "launched";
+  let newestLaunchItemId = "";
+  for (const e of project.events) {
+    if (e.type === "ready" && e.message.startsWith("exp://"))
+      newestLaunchItemId = `ev-${e.id}`;
+  }
+
   // Group consecutive launch-related events into one launch stack each.
   const timeline: TimelineItem[] = [];
   let buffer: TimelineEventItem[] = [];
@@ -193,6 +206,9 @@ export function buildTimeline(project: ProjectDetail): TimelineItem[] {
       kind: "launch",
       id: `launch-${buffer[0].id}`,
       events: buffer,
+      running:
+        appRunning &&
+        buffer.some((e) => e.type === "ready" && e.id === newestLaunchItemId),
       at: buffer[0].at,
     });
     buffer = [];

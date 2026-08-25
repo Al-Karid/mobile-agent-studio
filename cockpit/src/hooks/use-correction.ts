@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { sendPrompt } from "@/lib/api";
 
 /**
@@ -32,10 +32,13 @@ export function useCorrection({ projectId, status }: UseCorrectionArgs) {
 
   // Once the queued correction run is picked up, the status flips away from
   // the idle state — reset the in-flight flag so the button re-enables when
-  // the run finishes (ready / failed / needs_dev_build).
-  useEffect(() => {
+  // the run finishes (ready / failed / needs_dev_build). Adjusted DURING RENDER
+  // on status change (no effect, no cascading render).
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (status !== prevStatus) {
+    setPrevStatus(status);
     setSending(false);
-  }, [status]);
+  }
 
   const applyChanges = useCallback(
     async (text?: string) => {

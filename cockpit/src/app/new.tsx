@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -38,14 +38,16 @@ export default function NewProjectScreen() {
   const noKeysSet = settings ? noApiKeys(settings) : true;
 
   // Pre-select the user's default agent (set in Settings) for this project,
-  // keeping the current pick when usable; else fall back to dry-run.
-  useEffect(() => {
-    if (!settings) return;
+  // keeping the current pick when usable; else fall back to dry-run. Adjusted
+  // DURING RENDER when the default agent arrives or changes (no effect).
+  const defaultAgent = settings?.agent;
+  const [prevDefaultAgent, setPrevDefaultAgent] = useState(defaultAgent);
+  if (defaultAgent && defaultAgent !== prevDefaultAgent) {
+    setPrevDefaultAgent(defaultAgent);
     setAgent((current) =>
-      enabledAgents[current] ? current : enabledAgents[settings.agent] ? settings.agent : "dry-run"
+      enabledAgents[current] ? current : enabledAgents[defaultAgent] ? defaultAgent : "dry-run"
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]);
+  }
 
   async function submit() {
     if (busy) return;

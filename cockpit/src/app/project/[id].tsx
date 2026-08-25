@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
@@ -46,6 +47,20 @@ export default function ProjectChatScreen() {
     onError: setError,
   });
   const scrollRef = useRef<ScrollView>(null);
+
+  // Pin to the latest message only while the user is ALREADY at the bottom —
+  // incoming content keeps the view stuck, but expanding/collapsing a launch
+  // card mid-list also changes the content size and must NOT yank the scroll.
+  const atBottomRef = useRef(true);
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    atBottomRef.current =
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 40;
+  };
+  const handleContentSizeChange = () => {
+    if (atBottomRef.current) scrollRef.current?.scrollToEnd({ animated: true });
+  };
+
   const headerHeight = useHeaderHeight();
 
   // iOS header is transparent → content must start below it there.
@@ -140,9 +155,9 @@ export default function ProjectChatScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        onContentSizeChange={() =>
-          scrollRef.current?.scrollToEnd({ animated: true })
-        }
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onContentSizeChange={handleContentSizeChange}
       >
         {timeline.length === 0 && (
           <Text style={styles.empty}>Ask me to build or change this app…</Text>
@@ -160,7 +175,7 @@ export default function ProjectChatScreen() {
               }}
             />
           ) : item.kind === "launch" ? (
-            <LaunchStack key={item.id} events={item.events} />
+            <LaunchStack key={item.id} events={item.events} running={item.running} />
           ) : item.kind === "question" ? (
             // Agent asked the user a question — render the option chips so the
             // user can answer with one tap (sends the chosen option as a prompt).

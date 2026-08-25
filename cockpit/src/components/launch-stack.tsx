@@ -14,9 +14,17 @@ import { EventRow } from "@/components/event-row";
 /**
  * One grouped launch-history card. Collapsed by default (rocket + summary);
  * tap to expand into the real per-event rows (`launching` / `exp://` /
- * `App stopped`). Spins while a launch is ongoing.
+ * `App stopped`). Spins while a launch is ongoing. Shows "running" only when
+ * the project is actually launched (server truth, passed as a prop) — a stale
+ * exp:// event after a hard stop must not look alive.
  */
-export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
+export function LaunchStack({
+  events,
+  running,
+}: {
+  events: TimelineEventItem[];
+  running: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const launches = events.filter(
@@ -25,15 +33,14 @@ export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
   const ongoing = events.some((e) => e.ongoing);
   const count = launches.length;
   const label = count > 1 ? `App launched ×${count}` : "App launched";
-  // Reflect the CURRENT state of the group: the last event decides.
+  // Reflect the CURRENT state of the group: the last event decides "stopped".
   const lastEvent = events[events.length - 1];
-  const isRunning = count > 0 && lastEvent?.message !== "App stopped";
   const isStopped = lastEvent?.message === "App stopped";
 
   // Shimmer: breathing pulse on the "running" label while the app is live.
   const shimmer = useSharedValue(1);
   useEffect(() => {
-    if (isRunning) {
+    if (running) {
       shimmer.value = withRepeat(
         withSequence(withTiming(0.35, { duration: 700 }), withTiming(1, { duration: 700 })),
         -1,
@@ -42,7 +49,7 @@ export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
     } else {
       shimmer.value = 1;
     }
-  }, [isRunning, shimmer]);
+  }, [running, shimmer]);
   const shimmerStyle = useAnimatedStyle(() => ({ opacity: shimmer.value }));
 
   return (
@@ -60,8 +67,8 @@ export function LaunchStack({ events }: { events: TimelineEventItem[] }) {
         )}
         <Text style={styles.title} numberOfLines={1}>
           {label}
-          {isRunning || isStopped ? " · " : null}
-          {isRunning ? (
+          {running || isStopped ? " · " : null}
+          {running ? (
             <Animated.Text style={[styles.runningText, shimmerStyle]}>running</Animated.Text>
           ) : isStopped ? (
             <Text style={styles.stoppedText}>stopped</Text>
