@@ -87,16 +87,10 @@ export default function RootLayout() {
             name="settings"
             options={{
               title: "Settings",
-              // Same formSheet treatment as "new": no native header — the screen
-              // renders its own in-content header.
-              headerShown: false,
-              presentation: "formSheet",
-              gestureEnabled: true,
-              sheetGrabberVisible: false,
-              sheetAllowedDetents: [0.9],
-              sheetInitialDetentIndex: 0,
-              contentStyle: { backgroundColor: "transparent" },
-              sheetLargestUndimmedDetentIndex: -1,
+              // Normal pushed page (not a sheet): native header + back button.
+              // iOS only: let the page background extend behind the header.
+              headerTransparent: Platform.select({ ios: true, default: false }),
+              headerBackButtonDisplayMode: "minimal",
             }}
           />
         </Stack.Protected>

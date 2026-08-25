@@ -11,6 +11,9 @@ export const claudeAdapter: AgentAdapter = {
 
   run(req: AgentRunRequest) {
     const args = ["-p", req.prompt, "--dangerously-skip-permissions"];
+    if (req.credentials?.model) {
+      args.push("--model", req.credentials.model);
+    }
     return spawnToEvents("claude", args, {
       cwd: req.projectDir,
       env: {

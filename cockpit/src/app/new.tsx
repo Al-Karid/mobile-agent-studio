@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -18,13 +18,15 @@ import {
   disabled,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import { createProject, type ProjectPlatform } from "@/lib/api";
+import { createProject, getProviderSettings, type ProjectPlatform } from "@/lib/api";
 import { SheetHeader } from "@/components/sheet-header";
 import { PlatformSelector } from "@/components/platform-selector";
 
 const AGENTS = [
-  { id: "dry-run", title: "Dry run", blurb: "Fast local preview · no AI" },
-  { id: "cline", title: "Cline", blurb: "Real agent · DeepSeek" },
+  { id: "dry-run", title: "Dry run", blurb: "Fast preview · no AI" },
+  { id: "cline", title: "Cline", blurb: "DeepSeek / OpenAI / Anthropic" },
+  { id: "codex", title: "Codex", blurb: "GPT · OpenAI" },
+  { id: "claude", title: "Claude", blurb: "Claude · Anthropic" },
 ];
 
 /**
@@ -44,6 +46,13 @@ export default function NewProjectScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const promptRef = useRef<TextInput>(null);
+
+  // Pre-select the user's default agent (set in Settings) for this project.
+  useEffect(() => {
+    getProviderSettings()
+      .then((p) => setAgent(p.agent))
+      .catch(() => {});
+  }, []);
 
   async function submit() {
     if (busy) return;

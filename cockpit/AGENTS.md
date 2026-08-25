@@ -23,12 +23,20 @@
   one outside `Stack.Protected`** and must stay the first-declared unprotected
   screen (else a `formSheet` becomes the signed-out initial route — see repo
   AGENTS.md pitfalls). Default dev account is `al.cisse@revalys.com` /
-  `password1234` (server-seeded). The server URL is edited in Settings *after*
-  login; pre-auth the app uses the default from `lib/settings.ts`
-  (`EXPO_PUBLIC_API_URL`).
-- AI provider keys are per-account and managed in `/settings` →
-  `GET/PUT /api/settings/providers` (server masks saved keys).
-  Sign-out lives there too.
+  `password1234` (server-seeded).
+- **The server URL is `.env`-only** (`EXPO_PUBLIC_API_URL` in `lib/settings.ts`)
+  — there is no in-app editing path.
+- Settings (`/settings`) holds the user's **default agent** (cline/codex/claude)
+  plus each agent's **model** (provider-constrained pickers) and **API keys**
+  (masked on the server). Built with **RN components** (`Pressable` segmented
+  controls + a `Modal`-based model dropdown, `ActivityIndicator` buttons).
+  `new.tsx` pre-selects the default agent and lets the user override per
+  project (dry-run/cline/codex/claude).
+- AI provider settings live in `/settings`: the user's **default agent**
+  (cline/codex/claude), each agent's **model**, and per-agent **API keys** —
+  saved via `GET/PUT /api/settings/providers` (server masks keys, blank key =
+  keep existing). The server defaults a new project's agent to the owner's
+  `agent.default` setting. Sign-out lives there too.
 
 ## Platform
 

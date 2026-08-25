@@ -1,10 +1,25 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { router } from "expo-router";
-import { getApiUrl, setApiUrl } from "@/lib/settings";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { getProviderSettings, health, saveProviderSettings } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
-import { SheetHeader } from "@/components/sheet-header";
+
+const AGENTS = [
+  { id: "cline", title: "Cline" },
+  { id: "codex", title: "Codex" },
+  { id: "claude", title: "Claude" },
+] as const;
 
 const CLINE_PROVIDERS = [
   { id: "deepseek", label: "DeepSeek" },
@@ -12,38 +27,143 @@ const CLINE_PROVIDERS = [
   { id: "anthropic", label: "Anthropic" },
 ] as const;
 
+/** Model options per cline provider / agent (curated ids; match the CLIs). */
+const MODELS: Record<string, string[]> = {
+  deepseek: ["deepseek-v4-flash", "deepseek-v4"],
+  openai: ["gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o"],
+  anthropic: ["claude-sonnet-4-20250514", "claude-opus-4-20250514"],
+};
+
+/** Segmented selector (RN) — the app's standard control. */
+function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <View style={styles.segmented}>
+      {options.map((o) => {
+        const active = value === o.id;
+        return (
+          <Pressable
+            key={o.id}
+            onPress={() => onChange(o.id)}
+            style={[styles.segment, active && styles.segmentActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Dropdown model picker — a pressable row that opens a modal option list. */
+function ModelPicker({
+  value,
+  models,
+  onChange,
+}: {
+  value: string;
+  models: string[];
+  onChange: (model: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={styles.pickerRow}
+        accessibilityRole="button"
+        accessibilityLabel="Choose model"
+      >
+        <Text style={styles.pickerValue} numberOfLines={1}>
+          {value}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color="#8E8E93" />
+      </Pressable>
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Model</Text>
+            {models.map((m) => {
+              const active = m === value;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    onChange(m);
+                    setOpen(false);
+                  }}
+                  style={styles.optionRow}
+                >
+                  <Text
+                    style={[styles.optionText, active && styles.optionTextActive]}
+                    numberOfLines={1}
+                  >
+                    {m}
+                  </Text>
+                  {active ? <Ionicons name="checkmark" size={18} color="#111" /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 /**
- * Settings — presented as a native iOS liquid-glass sheet (formSheet).
- * No native header on iOS (same formSheet bugs as New Project), so the screen
- * renders its own in-content header: ✕ close + title. Transparent background
- * lets the liquid glass show through.
+ * Settings — default agent + per-agent model/API key. Normal pushed page;
+ * iOS header is transparent so the content pads below it via useHeaderHeight().
  */
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const signedIn = useAuthStore((s) => s.status === "signedIn");
   const signOut = useAuthStore((s) => s.signOut);
 
-  const [url, setUrl] = useState("");
+  const [agent, setAgent] = useState("cline");
   const [clineProvider, setClineProvider] = useState("deepseek");
   const [clineModel, setClineModel] = useState("");
   const [clineKeys, setClineKeys] = useState<Record<string, string>>({});
   const [clineKey, setClineKey] = useState("");
+  const [codexModel, setCodexModel] = useState("");
   const [codexKey, setCodexKey] = useState("");
   const [codexMasked, setCodexMasked] = useState("");
+  const [claudeModel, setClaudeModel] = useState("");
   const [claudeKey, setClaudeKey] = useState("");
   const [claudeMasked, setClaudeMasked] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // iOS header is transparent → scroll content must start below it there.
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+
   useEffect(() => {
-    getApiUrl().then(setUrl);
     if (!signedIn) return;
     getProviderSettings()
       .then((p) => {
+        setAgent(p.agent);
         setClineProvider(p.cline.provider);
         setClineModel(p.cline.model);
         setClineKeys(p.cline.keys);
+        setCodexModel(p.codex.model);
         setCodexMasked(p.codex.key);
+        setClaudeModel(p.claude.model);
         setClaudeMasked(p.claude.key);
       })
       .catch((e) => {
@@ -53,29 +173,47 @@ export default function SettingsScreen() {
       });
   }, [signedIn]);
 
+  // A saved model must stay valid for the selected provider/agent; fall back
+  // to that list's first option so the model picker always has a selection.
+  const clineModelValue =
+    clineModel && MODELS[clineProvider].includes(clineModel)
+      ? clineModel
+      : MODELS[clineProvider][0];
+  const codexModelValue =
+    codexModel && MODELS.openai.includes(codexModel) ? codexModel : MODELS.openai[0];
+  const claudeModelValue =
+    claudeModel && MODELS.anthropic.includes(claudeModel)
+      ? claudeModel
+      : MODELS.anthropic[0];
+
   async function save() {
     if (busy) return;
     setBusy(true);
     try {
-      await setApiUrl(url);
-      if (signedIn) {
-        await saveProviderSettings({
-          cline: {
-            provider: clineProvider,
-            model: clineModel.trim() || undefined,
-            apiKey: clineKey.trim() || undefined,
-          },
-          codex: { apiKey: codexKey.trim() || undefined },
-          claude: { apiKey: claudeKey.trim() || undefined },
-        });
-        setClineKey("");
-        setCodexKey("");
-        setClaudeKey("");
-        const p = await getProviderSettings();
-        setClineKeys(p.cline.keys);
-        setCodexMasked(p.codex.key);
-        setClaudeMasked(p.claude.key);
-      }
+      await saveProviderSettings({
+        agent,
+        cline: {
+          provider: clineProvider,
+          model: clineModel.trim() || undefined,
+          apiKey: clineKey.trim() || undefined,
+        },
+        codex: {
+          model: codexModel.trim() || undefined,
+          apiKey: codexKey.trim() || undefined,
+        },
+        claude: {
+          model: claudeModel.trim() || undefined,
+          apiKey: claudeKey.trim() || undefined,
+        },
+      });
+      setClineKey("");
+      setCodexKey("");
+      setClaudeKey("");
+      const p = await getProviderSettings();
+      setAgent(p.agent);
+      setClineKeys(p.cline.keys);
+      setCodexMasked(p.codex.key);
+      setClaudeMasked(p.claude.key);
       setStatus("Saved");
     } catch (e) {
       setStatus(`Failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -95,156 +233,167 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* In-content header (iOS-only app — no native header in the sheet). */}
-      <SheetHeader
-        title="Settings"
-        subtitle="Server · AI providers · account"
-        onClose={() => router.back()}
-        style={styles.sheetHeader}
-      />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: headerTopInset + 16 }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Default agent */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Default agent</Text>
+        <Text style={styles.hint}>New projects are pre-selected to this agent.</Text>
+        <Segmented
+          options={AGENTS.map((a) => ({ id: a.id, label: a.title }))}
+          value={agent}
+          onChange={setAgent}
+        />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Server</Text>
-          <Text style={styles.label}>Server URL</Text>
-          <TextInput
-            style={styles.input}
-            value={url}
-            onChangeText={setUrl}
-            placeholder="http://192.168.1.10:3000"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-        </View>
+      {/* Cline */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cline</Text>
 
-        {signedIn && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI Providers</Text>
-          <Text style={styles.hint}>
-            Keys are stored per-account on the server and injected into your agent's runs.
-            Leave a key blank to keep the saved one. No key = the server's .env fallback.
-          </Text>
+        <Text style={styles.label}>Provider</Text>
+        <Segmented
+          options={CLINE_PROVIDERS.map((p) => ({ id: p.id, label: p.label }))}
+          value={clineProvider}
+          onChange={(p) => {
+            setClineProvider(p);
+            setClineModel(MODELS[p][0]); // keep the model valid for the provider
+          }}
+        />
 
-          <Text style={styles.label}>Cline · provider</Text>
-          <View style={styles.segmented}>
-            {CLINE_PROVIDERS.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => setClineProvider(p.id)}
-                style={[styles.segment, clineProvider === p.id && styles.segmentActive]}
-              >
-                <Text
-                  style={[styles.segmentText, clineProvider === p.id && styles.segmentTextActive]}
-                >
-                  {p.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.masked}>
-            {clineKeys[clineProvider] ? `Saved key: ${clineKeys[clineProvider]}` : "No key saved"}
-          </Text>
+        <Text style={styles.label}>Model</Text>
+        <ModelPicker
+          value={clineModelValue}
+          models={MODELS[clineProvider]}
+          onChange={setClineModel}
+        />
 
-          <Text style={styles.label}>Cline · model</Text>
-          <TextInput
-            style={styles.input}
-            value={clineModel}
-            onChangeText={setClineModel}
-            placeholder="deepseek-v4-flash"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        <Text style={styles.label}>API key</Text>
+        {clineKeys[clineProvider] ? (
+          <Text style={styles.masked}>Saved key: {clineKeys[clineProvider]}</Text>
+        ) : null}
+        <TextInput
+          style={styles.input}
+          value={clineKey}
+          onChangeText={setClineKey}
+          placeholder="sk-…"
+          placeholderTextColor="#9CA3AF"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
 
-          <Text style={styles.label}>Cline · API key</Text>
-          <TextInput
-            style={styles.input}
-            value={clineKey}
-            onChangeText={setClineKey}
-            placeholder="sk-…"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+      {/* Codex */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Codex</Text>
+        <Text style={styles.hint}>OpenAI Codex — GPT models.</Text>
 
-          <Text style={styles.label}>Codex · API key</Text>
-          <TextInput
-            style={styles.input}
-            value={codexKey}
-            onChangeText={setCodexKey}
-            placeholder={codexMasked || "sk-…"}
-            placeholderTextColor={codexMasked ? "#6B7280" : "#9CA3AF"}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        <Text style={styles.label}>Model</Text>
+        <ModelPicker value={codexModelValue} models={MODELS.openai} onChange={setCodexModel} />
 
-          <Text style={styles.label}>Claude · API key</Text>
-          <TextInput
-            style={styles.input}
-            value={claudeKey}
-            onChangeText={setClaudeKey}
-            placeholder={claudeMasked || "sk-ant-…"}
-            placeholderTextColor={claudeMasked ? "#6B7280" : "#9CA3AF"}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-        )}
+        <Text style={styles.label}>API key</Text>
+        {codexMasked ? <Text style={styles.masked}>Saved key: {codexMasked}</Text> : null}
+        <TextInput
+          style={styles.input}
+          value={codexKey}
+          onChangeText={setCodexKey}
+          placeholder="sk-…"
+          placeholderTextColor="#9CA3AF"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
 
-        {!signedIn && (
-          <Text style={styles.hint}>Sign in to manage per-account AI provider keys.</Text>
-        )}
+      {/* Claude */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Claude</Text>
+        <Text style={styles.hint}>Anthropic Claude Code — Claude models.</Text>
 
-        {status && <Text style={styles.status}>{status}</Text>}
+        <Text style={styles.label}>Model</Text>
+        <ModelPicker
+          value={claudeModelValue}
+          models={MODELS.anthropic}
+          onChange={setClaudeModel}
+        />
 
-        <Pressable onPress={save} style={[styles.primary, busy && styles.primaryBusy]}>
-          <Text style={styles.primaryText}>{busy ? "Saving…" : "Save"}</Text>
+        <Text style={styles.label}>API key</Text>
+        {claudeMasked ? <Text style={styles.masked}>Saved key: {claudeMasked}</Text> : null}
+        <TextInput
+          style={styles.input}
+          value={claudeKey}
+          onChangeText={setClaudeKey}
+          placeholder="sk-ant-…"
+          placeholderTextColor="#9CA3AF"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      {status && <Text style={styles.status}>{status}</Text>}
+
+      <Pressable
+        onPress={save}
+        disabled={busy}
+        style={({ pressed }) => [
+          styles.primary,
+          pressed && styles.pressed,
+          busy && styles.disabled,
+        ]}
+        accessibilityRole="button"
+      >
+        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Save</Text>}
+      </Pressable>
+      <Pressable
+        onPress={test}
+        style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
+        accessibilityRole="button"
+      >
+        <Text style={styles.ghostText}>Test connection</Text>
+      </Pressable>
+
+      {/* Account */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Account</Text>
+        <Text style={styles.hint}>
+          {user?.email ?? "Signed in"} · session stored in the iOS keychain
+        </Text>
+        <Pressable
+          onPress={() => signOut().catch(() => {})}
+          style={({ pressed }) => [styles.danger, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.dangerText}>Sign out</Text>
         </Pressable>
-        <Pressable onPress={test} style={styles.ghost}>
-          <Text style={styles.ghostText}>Test connection</Text>
-        </Pressable>
-
-        {signedIn && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
-            <Text style={styles.hint}>
-              {user?.email ?? "Signed in"} · session stored in the iOS keychain
-            </Text>
-            <Pressable onPress={() => signOut().catch(() => {})} style={styles.danger}>
-              <Text style={styles.dangerText}>Sign out</Text>
-            </Pressable>
-          </View>
-        )}
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // Transparent so the iOS 26 liquid glass shows through the sheet.
-    backgroundColor: "transparent",
+  container: { flex: 1, backgroundColor: "#F5F5F7" },
+  content: { padding: 16, paddingBottom: 48, gap: 12 },
+  card: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 16,
     padding: 16,
+    gap: 10,
   },
-  sheetHeader: { paddingHorizontal: 0, paddingTop: 8, paddingBottom: 8 },
-  scrollContent: { paddingBottom: 24, gap: 12 },
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: "800", color: "#111" },
+  cardTitle: { fontSize: 15, fontWeight: "800", color: "#111" },
   label: { fontSize: 12, fontWeight: "600", color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.6 },
   hint: { fontSize: 12, color: "#6B7280", lineHeight: 17 },
   masked: { fontSize: 12, color: "#059669", fontWeight: "600" },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -263,12 +412,71 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: "#111" },
   segmentText: { fontSize: 13, fontWeight: "700", color: "#374151" },
   segmentTextActive: { color: "#fff" },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pickerValue: { fontSize: 15, color: "#111", flex: 1, marginRight: 8 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: 32,
+  },
+  modalCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, gap: 4 },
+  modalTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
+  },
+  optionText: { fontSize: 15, color: "#333", flex: 1, marginRight: 8 },
+  optionTextActive: { color: "#111", fontWeight: "700" },
   status: { color: "#666", fontSize: 13 },
-  primary: { backgroundColor: "#111", paddingVertical: 14, borderRadius: 12, alignItems: "center" },
-  primaryBusy: { opacity: 0.6 },
+  primary: {
+    backgroundColor: "#111",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   primaryText: { color: "#fff", fontWeight: "700" },
-  ghost: { paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#fff", alignItems: "center" },
+  ghost: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
+    alignItems: "center",
+  },
   ghostText: { color: "#111", fontWeight: "600" },
-  danger: { paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#FECACA", backgroundColor: "#FEF2F2", alignItems: "center" },
+  danger: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+  },
   dangerText: { color: "#DC2626", fontWeight: "700" },
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.6 },
 });

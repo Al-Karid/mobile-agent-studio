@@ -10,7 +10,12 @@ export const codexAdapter: AgentAdapter = {
   },
 
   run(req: AgentRunRequest) {
-    const args = ["exec", "--dangerously-bypass-approvals-and-sandbox", req.prompt];
+    const args = ["exec", "--dangerously-bypass-approvals-and-sandbox"];
+    if (req.credentials?.model) {
+      // "GPT only" per the Settings model picker — codex CLI default when unset.
+      args.push("--model", req.credentials.model);
+    }
+    args.push(req.prompt);
     return spawnToEvents("codex", args, {
       cwd: req.projectDir,
       env: {

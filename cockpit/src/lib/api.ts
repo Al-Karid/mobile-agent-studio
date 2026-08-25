@@ -139,13 +139,15 @@ export async function me(): Promise<AuthUser> {
 // ── provider settings ─────────────────────────────────────────────────────
 
 export interface ProviderSettings {
+  /** The user's default agent (cline | codex | claude). */
+  agent: string;
   cline: {
     provider: string;
     model: string;
     keys: Record<string, string>;
   };
-  codex: { key: string };
-  claude: { key: string };
+  codex: { model: string; key: string };
+  claude: { model: string; key: string };
 }
 
 export async function getProviderSettings(): Promise<ProviderSettings> {
@@ -154,9 +156,10 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
 }
 
 export async function saveProviderSettings(body: {
+  agent?: string;
   cline?: { provider?: string; model?: string; apiKey?: string };
-  codex?: { apiKey?: string };
-  claude?: { apiKey?: string };
+  codex?: { model?: string; apiKey?: string };
+  claude?: { model?: string; apiKey?: string };
 }): Promise<void> {
   const res = await fetch(`${await base()}/api/settings/providers`, {
     method: "PUT",
