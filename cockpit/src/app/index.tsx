@@ -57,6 +57,7 @@ export default function ProjectsScreen() {
         }}
       />
 
+      {/* Greeting card — first item in the list, scrolls with the projects. */}
       <FlatList
         data={projects}
         keyExtractor={(p) => p.id}
@@ -65,7 +66,17 @@ export default function ProjectsScreen() {
           { paddingTop: headerTopInset + 16 },
         ]}
         ListHeaderComponent={
-          error ? <Text style={styles.error}>Can&apos;t reach server: {error}</Text> : null
+          <>
+            <View style={styles.greeting}>
+              <Text style={styles.greetingTitle}>Hello there</Text>
+              <Text style={styles.greetingSubtitle}>
+                So what do we build today?
+              </Text>
+            </View>
+            {error ? (
+              <Text style={styles.error}>Can&apos;t reach server: {error}</Text>
+            ) : null}
+          </>
         }
         ListEmptyComponent={
           <Text style={styles.empty}>No projects yet. Tap “New” to build your first app.</Text>
@@ -80,6 +91,20 @@ const styles = StyleSheet.create({
   // Background fills the whole screen (including behind the transparent
   // header); only the scroll content is offset below it.
   container: { flex: 1, backgroundColor: "#F5F5F7", paddingHorizontal: 16 },
+  greeting: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    gap: 4,
+  },
+  greetingTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    color: "#111",
+  },
+  greetingSubtitle: { fontSize: 15, color: "#6B7280" },
   listContent: { gap: 8, paddingBottom: 24 },
   empty: { textAlign: "center", color: "#999", marginTop: 40 },
   error: { color: "#c00", marginBottom: 10, fontSize: 13 },

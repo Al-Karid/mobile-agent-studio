@@ -143,9 +143,13 @@ export default function ProjectChatScreen() {
         }}
       />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <Text style={[styles.error, styles.errorTop, { top: headerTopInset + 12 }]}>
+          {error}
+        </Text>
+      )}
 
-      {/* conversation */}
+      {/* conversation — fullscreen; content scrolls under the floating input */}
       <ScrollView
         ref={scrollRef}
         style={styles.messages}
@@ -219,18 +223,22 @@ export default function ProjectChatScreen() {
         )}
       </ScrollView>
 
-      {/* input — self-contained keyboard behavior; screen scrolls on open */}
-      <ChatInputBar
-        value={input}
-        onChangeText={setInput}
-        onSend={send}
-        busy={busy}
-        enabled={!inputLocked}
-        onKeyboardShow={() =>
-          scrollRef.current?.scrollToEnd({ animated: true })
-        }
-      />
-      {sendError && <Text style={styles.error}>{sendError}</Text>}
+      {/* floating input — overlays the bottom of the fullscreen conversation */}
+      <View style={styles.inputFloat} pointerEvents="box-none">
+        {sendError && (
+          <Text style={[styles.error, styles.sendError]}>{sendError}</Text>
+        )}
+        <ChatInputBar
+          value={input}
+          onChangeText={setInput}
+          onSend={send}
+          busy={busy}
+          enabled={!inputLocked}
+          onKeyboardShow={() =>
+            scrollRef.current?.scrollToEnd({ animated: true })
+          }
+        />
+      </View>
     </View>
   );
 }
@@ -247,7 +255,11 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   messages: { flex: 1 },
-  messagesContent: { padding: 16 },
+  // Bottom clearance so the last message isn't hidden behind the floating input.
+  messagesContent: { padding: 16, paddingBottom: 140 },
   empty: { textAlign: "center", color: "#999", marginTop: 60, fontSize: 14 },
-  error: { color: "#c00", fontSize: 12, paddingHorizontal: 16, paddingTop: 6 },
+  error: { color: "#c00", fontSize: 12 },
+  errorTop: { position: "absolute", left: 16, right: 16, zIndex: 2 },
+  sendError: { paddingHorizontal: 16, paddingBottom: 6, textAlign: "center" },
+  inputFloat: { position: "absolute", left: 0, right: 0, bottom: 0 },
 });
