@@ -1,30 +1,44 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from "react-native-reanimated";
+import { useKeyboardHeight } from "@/hooks/use-keyboard";
 
 /**
- * Bottom prompt input. The send button lives INSIDE the pill; the pill sits on
- * a gray band with a soft shadow so it clearly contrasts with the white
- * message background. Keyboard avoidance is handled by the screen via
- * useKeyboardSpacer.
+ * Bottom prompt input — the send button lives inside the pill. Keyboard
+ * behavior follows the Expo guide's chat pattern: the bottom padding AND the
+ * spacer are driven by the SAME keyboard-height value, so show and dismiss
+ * stay perfectly in sync (no flicker).
  */
 export function ChatInputBar({
   value,
   onChangeText,
   onSend,
   busy,
-  keyboardVisible = false,
+  onKeyboardShow,
   placeholder = "Ask for a change…",
 }: {
   value: string;
   onChangeText: (v: string) => void;
   onSend: () => void;
   busy: boolean;
-  keyboardVisible?: boolean;
+  onKeyboardShow?: () => void;
   placeholder?: string;
 }) {
   const disabled = value.trim().length === 0;
+  const { height, target } = useKeyboardHeight(onKeyboardShow);
+
+  // 44px above the bottom when closed → 15px above the keyboard when open.
+  const wrapStyle = useAnimatedStyle(() => ({
+    paddingBottom: interpolate(height.value, [0, target.value], [44, 15], Extrapolation.CLAMP),
+  }));
+
+  // Docs pattern: the spacer follows the keyboard height on every frame.
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: Math.abs(height.value),
+  }));
+
   return (
-    <View style={[styles.wrap, { paddingBottom: keyboardVisible ? 15 : 44 }]}>
+    <Animated.View style={[styles.wrap, wrapStyle]}>
       <View style={styles.row}>
         <TextInput
           style={styles.input}
@@ -48,7 +62,9 @@ export function ChatInputBar({
           )}
         </Pressable>
       </View>
-    </View>
+      {/* keyboard spacer — grows/shrinks frame-by-frame with the keyboard */}
+      <Animated.View style={spacerStyle} />
+    </Animated.View>
   );
 }
 
@@ -57,7 +73,6 @@ const styles = StyleSheet.create({
     // No background — a narrow centered bar, floated well above the bottom.
     paddingHorizontal: 12,
     paddingTop: 6,
-    paddingBottom: 15,
   },
   row: {
     alignSelf: "center",

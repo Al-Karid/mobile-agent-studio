@@ -4,7 +4,9 @@ import { StatusBar } from "expo-status-bar";
 
 export default function RootLayout() {
   return (
-    <KeyboardProvider>
+    // preload={false}: the library preloads the keyboard on app start, which
+    // can cause a brief keyboard flicker — we don't autofocus, so disable it.
+    <KeyboardProvider preload={false}>
       <Stack>
         <Stack.Screen name="index" options={{ title: "Projects" }} />
         <Stack.Screen name="new" options={{ title: "New Project", presentation: "modal" }} />
