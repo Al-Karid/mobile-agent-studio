@@ -1,4 +1,25 @@
+import * as SecureStore from "expo-secure-store";
 import { getApiUrl } from "./settings";
+
+const TOKEN_KEY = "mas.token";
+
+/** Session token, stored in the iOS keychain. */
+export async function getToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setToken(token: string | null): Promise<void> {
+  try {
+    if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
+    else await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } catch {
+    /* secure-store unavailable — auth will simply fail */
+  }
+}
 
 export type ProjectPlatform = "ios" | "android" | "both";
 
@@ -44,8 +65,28 @@ export interface ProjectDetail extends Project {
   events: StudioEvent[];
 }
 
+export interface AuthUser {
+  id: string;
+  email: string | null;
+  provider: string;
+  display_name: string | null;
+}
+
 async function base(): Promise<string> {
   return (await getApiUrl()).replace(/\/+$/, "");
+}
+
+/** Attach the auth header (when logged in) to a request. */
+async function withAuth(init: RequestInit = {}): Promise<RequestInit> {
+  const token = await getToken();
+  return {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers ?? {}),
+    },
+  };
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -56,8 +97,79 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── auth ──────────────────────────────────────────────────────────────────
+
+export async function login(
+  email: string,
+  password: string
+): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${await base()}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return json(res);
+}
+
+export async function register(
+  email: string,
+  password: string
+): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${await base()}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return json(res);
+}
+
+export async function logout(): Promise<void> {
+  const res = await fetch(`${await base()}/api/auth/logout`, {
+    method: "POST",
+    ...(await withAuth()),
+  });
+  await json<{ ok: boolean }>(res);
+}
+
+export async function me(): Promise<AuthUser> {
+  const res = await fetch(`${await base()}/api/auth/me`, await withAuth());
+  return (await json<{ user: AuthUser }>(res)).user;
+}
+
+// ── provider settings ─────────────────────────────────────────────────────
+
+export interface ProviderSettings {
+  cline: {
+    provider: string;
+    model: string;
+    keys: Record<string, string>;
+  };
+  codex: { key: string };
+  claude: { key: string };
+}
+
+export async function getProviderSettings(): Promise<ProviderSettings> {
+  const res = await fetch(`${await base()}/api/settings/providers`, await withAuth());
+  return json<ProviderSettings>(res);
+}
+
+export async function saveProviderSettings(body: {
+  cline?: { provider?: string; model?: string; apiKey?: string };
+  codex?: { apiKey?: string };
+  claude?: { apiKey?: string };
+}): Promise<void> {
+  const res = await fetch(`${await base()}/api/settings/providers`, {
+    method: "PUT",
+    ...(await withAuth()),
+    body: JSON.stringify(body),
+  });
+  await json<{ ok: boolean }>(res);
+}
+
+// ── projects ──────────────────────────────────────────────────────────────
+
 export async function listProjects(): Promise<Project[]> {
-  const res = await fetch(`${await base()}/api/projects`);
+  const res = await fetch(`${await base()}/api/projects`, await withAuth());
   return json<Project[]>(res);
 }
 
@@ -69,38 +181,47 @@ export async function createProject(input: {
 }): Promise<{ project: Project; run: Run }> {
   const res = await fetch(`${await base()}/api/projects`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    ...(await withAuth()),
     body: JSON.stringify(input),
   });
   return json(res);
 }
 
 export async function getProject(id: string): Promise<ProjectDetail> {
-  const res = await fetch(`${await base()}/api/projects/${id}`);
+  const res = await fetch(`${await base()}/api/projects/${id}`, await withAuth());
   return json<ProjectDetail>(res);
 }
 
 export async function sendPrompt(id: string, prompt: string): Promise<{ run: Run }> {
   const res = await fetch(`${await base()}/api/projects/${id}/prompts`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    ...(await withAuth()),
     body: JSON.stringify({ prompt }),
   });
   return json(res);
 }
 
 export async function launchProject(id: string): Promise<{ run: Run }> {
-  const res = await fetch(`${await base()}/api/projects/${id}/launch`, { method: "POST" });
+  const res = await fetch(`${await base()}/api/projects/${id}/launch`, {
+    method: "POST",
+    ...(await withAuth()),
+  });
   return json(res);
 }
 
 export async function stopProject(id: string): Promise<{ project: Project }> {
-  const res = await fetch(`${await base()}/api/projects/${id}/stop`, { method: "POST" });
+  const res = await fetch(`${await base()}/api/projects/${id}/stop`, {
+    method: "POST",
+    ...(await withAuth()),
+  });
   return json(res);
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const res = await fetch(`${await base()}/api/projects/${id}`, { method: "DELETE" });
+  const res = await fetch(`${await base()}/api/projects/${id}`, {
+    method: "DELETE",
+    ...(await withAuth()),
+  });
   await json<{ ok: boolean }>(res);
 }
 

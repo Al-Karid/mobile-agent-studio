@@ -15,6 +15,16 @@ export interface AgentRunRequest {
   env?: Record<string, string>;
   /** Abort the agent mid-run (e.g. it asked the user a question). */
   signal?: AbortSignal;
+  /**
+   * Per-run credentials resolved from the PROJECT OWNER's saved settings.
+   * `provider/apiKey/model` are the cline CLI overrides; other adapters pick
+   * the key out of `env`.
+   */
+  credentials?: {
+    provider?: string;
+    apiKey?: string;
+    model?: string;
+  };
 }
 
 export type AgentEvent =

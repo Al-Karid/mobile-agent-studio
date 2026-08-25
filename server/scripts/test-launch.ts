@@ -22,6 +22,7 @@ async function main() {
   try {
     const project = await storage.createProject({
       id,
+      userId: "user-al-cisse",
       name: "launchtest",
       prompt,
       agent: "dry-run",

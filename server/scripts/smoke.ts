@@ -16,6 +16,7 @@ async function main() {
 
   const project = await storage.createProject({
     id,
+    userId: "user-al-cisse",
     name: "smoke",
     prompt,
     agent: "dry-run",

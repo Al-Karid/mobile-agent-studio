@@ -13,9 +13,26 @@ import { createDrizzleStorage } from "./drizzle";
  * Drizzle adapter. This is the "even the db is replaceable" proof.
  */
 async function runContract(s: StorageAdapter): Promise<void> {
+  // users + sessions + settings
+  const u = await s.createUser({
+    id: "u1",
+    email: "u@example.com",
+    passwordHash: "hash",
+    provider: "email",
+  });
+  assert.equal((await s.getUserByEmail("u@example.com"))?.id, "u1");
+  await s.createSession(u.id, "tok");
+  assert.equal((await s.getUserBySessionToken("tok"))?.id, "u1");
+  await s.deleteSession("tok");
+  assert.equal(await s.getUserBySessionToken("tok"), undefined);
+  await s.setSetting(u.id, "k", "v");
+  assert.equal(await s.getSetting(u.id, "k"), "v");
+  assert.deepEqual(await s.listSettings(u.id), { k: "v" });
+
   // projects
   const p = await s.createProject({
     id: "p1",
+    userId: u.id,
     name: "hello",
     prompt: "a test app",
     agent: "dry-run",
@@ -25,6 +42,8 @@ async function runContract(s: StorageAdapter): Promise<void> {
   assert.equal(p.status, "created");
   assert.equal(p.exp_url, null);
   assert.equal(p.platform, "ios");
+  assert.equal((await s.listProjects(u.id)).length, 1);
+  assert.equal((await s.listProjects("other-user")).length, 0);
   await s.setProjectStatus("p1", "ready");
   assert.equal((await s.getProject("p1"))?.status, "ready");
 

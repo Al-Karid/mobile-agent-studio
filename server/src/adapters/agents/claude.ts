@@ -13,7 +13,13 @@ export const claudeAdapter: AgentAdapter = {
     const args = ["-p", req.prompt, "--dangerously-skip-permissions"];
     return spawnToEvents("claude", args, {
       cwd: req.projectDir,
-      env: { ...process.env, ...req.env },
+      env: {
+        ...process.env,
+        ...req.env,
+        ...(req.credentials?.apiKey
+          ? { ANTHROPIC_API_KEY: req.credentials.apiKey }
+          : {}),
+      },
     }, req.signal);
   },
 };

@@ -15,17 +15,17 @@ export const clineAdapter: AgentAdapter = {
   },
 
   run(req: AgentRunRequest) {
-    const model = req.env?.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
+    const defaultModel = req.env?.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
+    const provider = req.credentials?.provider ?? "deepseek";
+    const model = req.credentials?.model ?? defaultModel;
     // --thinking none: generate directly (DeepSeek's default thinking mode streams
     // reasoning tokens endlessly, which is slow, costly and floods the run log).
-    const args = [
-      "-c", req.projectDir,
-      "-P", "deepseek",
-      "-m", model,
-      "--thinking", "none",
-      "--json",
-      buildPrompt(req),
-    ];
+    const args = ["-c", req.projectDir, "-P", provider];
+    if (req.credentials?.apiKey) {
+      // The user's own key overrides whatever ~/.cline has configured.
+      args.push("-k", req.credentials.apiKey);
+    }
+    args.push("-m", model, "--thinking", "none", "--json", buildPrompt(req));
     return spawnToEvents("cline", args, {
       cwd: req.projectDir,
       env: { ...process.env, ...req.env },

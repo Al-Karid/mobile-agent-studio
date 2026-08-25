@@ -4,6 +4,7 @@ import {
   int,
   longtext,
   mysqlTable,
+  primaryKey,
   text,
   varchar,
 } from "drizzle-orm/mysql-core";
@@ -14,6 +15,7 @@ import {
  */
 export const projects = mysqlTable("projects", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  user_id: text("user_id").notNull(),
   name: text("name").notNull(),
   prompt: text("prompt").notNull(),
   status: text("status").notNull().default("created"),
@@ -25,6 +27,33 @@ export const projects = mysqlTable("projects", {
   created_at: bigint("created_at", { mode: "number" }).notNull(),
   updated_at: bigint("updated_at", { mode: "number" }).notNull(),
 });
+
+export const users = mysqlTable("users", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  email: text("email").unique(),
+  password_hash: text("password_hash"),
+  provider: text("provider").notNull().default("email"),
+  provider_id: text("provider_id"),
+  display_name: text("display_name"),
+  created_at: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const sessions = mysqlTable("sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  user_id: text("user_id").notNull(),
+  token_hash: text("token_hash").notNull().unique(),
+  created_at: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const settings = mysqlTable(
+  "settings",
+  {
+    user_id: text("user_id").notNull(),
+    key: text("key").notNull(),
+    value: longtext("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.user_id, t.key] })]
+);
 
 export const runs = mysqlTable(
   "runs",

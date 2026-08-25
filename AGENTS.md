@@ -88,3 +88,9 @@ cline -c <dir> -P deepseek -m deepseek-v4-flash --thinking none --json "<prompt>
 - **`react-native-worklets`** is allow-listed (reanimated 4 peer dep, bundled in the
   Expo Go default template but missing from the official third-party list).
 - **Run logs are truncated to ~100KB** (`appendRunLog`) — a verbose agent can't bloat the DB.
+- **`Stack.Protected` + `formSheet` = stuck modal.** When signed out, expo-router
+  filters out the guarded screens and the FIRST remaining `<Stack.Screen>` in JSX
+  order becomes the initial route. If a `formSheet` modal is declared before the
+  login screen, the app boots into a root modal with nothing beneath it — it can't
+  be dismissed (`router.back()` has no history, nothing to swipe to). Declare the
+  login screen first; modals only as pushed-on-top routes.

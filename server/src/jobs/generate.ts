@@ -5,6 +5,7 @@ import { storage } from "@/adapters/storage";
 import { publish } from "@/lib/sse";
 import { getAgent } from "@/adapters/agents";
 import { getValidator } from "@/adapters/validators";
+import { resolveCredentials } from "@/lib/agent-credentials";
 import { validateDeps } from "@/lib/expo-go";
 import { gitInit, gitCommit } from "@/lib/git";
 import { runCommand } from "@/lib/exec";
@@ -65,6 +66,13 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
       DEEPSEEK_BASE_URL: config.deepseek.baseUrl,
       DEEPSEEK_MODEL: config.deepseek.model,
     };
+    // The agent uses the PROJECT OWNER's saved provider keys when available.
+    const ownerSettings = await storage.listSettings(project.user_id);
+    const credentials = resolveCredentials(
+      ownerSettings,
+      project.agent,
+      config.deepseek.model
+    );
     const controller = new AbortController();
     let exitCode = 0;
     let buffer = "";
@@ -73,7 +81,8 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
       projectDir: dir,
       prompt: run.input ?? project.prompt,
       context: AGENT_CONTEXT,
-      env,
+      env: { ...env, ...credentials.env },
+      credentials,
       signal: controller.signal,
     })) {
       if (ev.type === "output") {

@@ -4,6 +4,7 @@ import type {
   Run,
   StorageAdapter,
   StudioEvent,
+  User,
 } from "@/contracts/storage";
 import { capRunLog } from "@/lib/run-log";
 
@@ -16,14 +17,71 @@ export function createMemoryStorage(): StorageAdapter {
   const projects = new Map<string, Project>();
   const runs = new Map<number, Run>();
   const events: StudioEvent[] = [];
+  const users = new Map<string, User>();
+  const sessions = new Map<string, string>(); // token_hash → user_id
+  const settings = new Map<string, Map<string, string>>(); // user_id → key → value
   let nextRunId = 0;
   let nextEventId = 0;
 
   return {
-    async createProject(p) {
+    // ── users + sessions ────────────────────────────────────────────────────
+    async createUser(u) {
+      const user: User = {
+        id: u.id,
+        email: u.email,
+        password_hash: u.passwordHash,
+        provider: u.provider,
+        provider_id: u.providerId ?? null,
+        display_name: u.displayName ?? null,
+        created_at: Date.now(),
+      };
+      users.set(user.id, user);
+      return user;
+    },
+    async getUserByEmail(email) {
+      return [...users.values()].find((u) => u.email === email);
+    },
+    async getUserByProvider(provider, providerId) {
+      return [...users.values()].find(
+        (u) => u.provider === provider && u.provider_id === providerId
+      );
+    },
+    async getUserById(id) {
+      return users.get(id);
+    },
+    async createSession(userId, tokenHash) {
+      sessions.set(tokenHash, userId);
+    },
+    async getUserBySessionToken(tokenHash) {
+      const userId = sessions.get(tokenHash);
+      return userId ? users.get(userId) : undefined;
+    },
+    async deleteSession(tokenHash) {
+      sessions.delete(tokenHash);
+    },
+
+    // ── per-user settings ───────────────────────────────────────────────────
+    async getSetting(userId, key) {
+      return settings.get(userId)?.get(key);
+    },
+    async setSetting(userId, key, value) {
+      let m = settings.get(userId);
+      if (!m) {
+        m = new Map();
+        settings.set(userId, m);
+      }
+      m.set(key, value);
+    },
+    async listSettings(userId) {
+      return Object.fromEntries(settings.get(userId) ?? []);
+    },
+
+    // ── projects ────────────────────────────────────────────────────────────
+    async createProject({ userId, ...rest }) {
       const t = Date.now();
       const project: Project = {
-        ...p,
+        ...rest,
+        user_id: userId,
         status: "created",
         exp_url: null,
         metro_port: null,
@@ -36,8 +94,10 @@ export function createMemoryStorage(): StorageAdapter {
     async getProject(id) {
       return projects.get(id);
     },
-    async listProjects() {
-      return [...projects.values()].sort((a, b) => b.created_at - a.created_at);
+    async listProjects(userId) {
+      return [...projects.values()]
+        .filter((p) => p.user_id === userId)
+        .sort((a, b) => b.created_at - a.created_at);
     },
     async setProjectStatus(id, status: ProjectStatus) {
       const p = projects.get(id);

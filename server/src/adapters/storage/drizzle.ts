@@ -7,6 +7,7 @@ import type {
   Run,
   StorageAdapter,
   StudioEvent,
+  User,
 } from "@/contracts/storage";
 import { capRunLog } from "@/lib/run-log";
 import { config } from "@/lib/config";
@@ -70,6 +71,7 @@ class DrizzleStorageAdapter implements StorageAdapter {
 
   async createProject(p: {
     id: string;
+    userId: string;
     name: string;
     prompt: string;
     agent: string;
@@ -80,6 +82,7 @@ class DrizzleStorageAdapter implements StorageAdapter {
     const t = Date.now();
     await this.db.insert(this.s.projects).values({
       id: p.id,
+      user_id: p.userId,
       name: p.name,
       prompt: p.prompt,
       status: "created",
@@ -104,11 +107,12 @@ class DrizzleStorageAdapter implements StorageAdapter {
     return rows[0] as Project | undefined;
   }
 
-  async listProjects(): Promise<Project[]> {
+  async listProjects(userId: string): Promise<Project[]> {
     await this.ensureSchema();
     return (await this.db
       .select()
       .from(this.s.projects)
+      .where(eq(this.s.projects.user_id, userId))
       .orderBy(desc(this.s.projects.created_at))) as Project[];
   }
 
@@ -135,6 +139,126 @@ class DrizzleStorageAdapter implements StorageAdapter {
   async deleteProject(id: string): Promise<void> {
     await this.ensureSchema();
     await this.db.delete(this.s.projects).where(eq(this.s.projects.id, id));
+  }
+
+  // ── users + sessions ──────────────────────────────────────────────────────
+
+  async createUser(u: {
+    id: string;
+    email: string | null;
+    passwordHash: string | null;
+    provider: "email" | "google" | "github";
+    providerId?: string | null;
+    displayName?: string | null;
+  }): Promise<User> {
+    await this.ensureSchema();
+    await this.db.insert(this.s.users).values({
+      id: u.id,
+      email: u.email,
+      password_hash: u.passwordHash,
+      provider: u.provider,
+      provider_id: u.providerId ?? null,
+      display_name: u.displayName ?? null,
+      created_at: Date.now(),
+    });
+    return (await this.getUserById(u.id))!;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.users)
+      .where(eq(this.s.users.email, email))
+      .limit(1);
+    return rows[0] as User | undefined;
+  }
+
+  async getUserByProvider(
+    provider: "email" | "google" | "github",
+    providerId: string
+  ): Promise<User | undefined> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.users)
+      .where(
+        and(
+          eq(this.s.users.provider, provider),
+          eq(this.s.users.provider_id, providerId)
+        )
+      )
+      .limit(1);
+    return rows[0] as User | undefined;
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.users)
+      .where(eq(this.s.users.id, id))
+      .limit(1);
+    return rows[0] as User | undefined;
+  }
+
+  async createSession(userId: string, tokenHash: string): Promise<void> {
+    await this.ensureSchema();
+    await this.db.insert(this.s.sessions).values({
+      user_id: userId,
+      token_hash: tokenHash,
+      created_at: Date.now(),
+    });
+  }
+
+  async getUserBySessionToken(tokenHash: string): Promise<User | undefined> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.sessions)
+      .where(eq(this.s.sessions.token_hash, tokenHash))
+      .limit(1);
+    if (!rows[0]) return undefined;
+    return this.getUserById(rows[0].user_id);
+  }
+
+  async deleteSession(tokenHash: string): Promise<void> {
+    await this.ensureSchema();
+    await this.db.delete(this.s.sessions).where(eq(this.s.sessions.token_hash, tokenHash));
+  }
+
+  // ── per-user settings ────────────────────────────────────────────────────
+
+  async getSetting(userId: string, key: string): Promise<string | undefined> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.settings)
+      .where(and(eq(this.s.settings.user_id, userId), eq(this.s.settings.key, key)))
+      .limit(1);
+    return rows[0]?.value;
+  }
+
+  async setSetting(userId: string, key: string, value: string): Promise<void> {
+    await this.ensureSchema();
+    await this.db
+      .insert(this.s.settings)
+      .values({ user_id: userId, key, value })
+      .onConflictDoUpdate({
+        target: [this.s.settings.user_id, this.s.settings.key],
+        set: { value },
+      });
+  }
+
+  async listSettings(userId: string): Promise<Record<string, string>> {
+    await this.ensureSchema();
+    const rows = await this.db
+      .select()
+      .from(this.s.settings)
+      .where(eq(this.s.settings.user_id, userId));
+    return Object.fromEntries(
+      rows.map((r: { key: string; value: string }) => [r.key, r.value])
+    );
   }
 
 

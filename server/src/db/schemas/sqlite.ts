@@ -1,4 +1,4 @@
-import { integer, index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * SQLite dialect schema. Column names match the storage contract shapes
@@ -8,6 +8,7 @@ export const projects = sqliteTable(
   "projects",
   {
     id: text("id").primaryKey(),
+    user_id: text("user_id").notNull(),
     name: text("name").notNull(),
     prompt: text("prompt").notNull(),
     status: text("status").notNull().default("created"),
@@ -19,6 +20,37 @@ export const projects = sqliteTable(
     created_at: integer("created_at").notNull(),
     updated_at: integer("updated_at").notNull(),
   }
+);
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").unique(),
+  password_hash: text("password_hash"),
+  provider: text("provider").notNull().default("email"),
+  provider_id: text("provider_id"),
+  display_name: text("display_name"),
+  created_at: integer("created_at").notNull(),
+});
+
+export const sessions = sqliteTable("sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  user_id: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token_hash: text("token_hash").notNull().unique(),
+  created_at: integer("created_at").notNull(),
+});
+
+export const settings = sqliteTable(
+  "settings",
+  {
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.user_id, t.key] })]
 );
 
 export const runs = sqliteTable(

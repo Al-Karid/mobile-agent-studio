@@ -3,6 +3,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   serial,
   text,
 } from "drizzle-orm/pg-core";
@@ -15,6 +16,7 @@ export const projects = pgTable(
   "projects",
   {
     id: text("id").primaryKey(),
+    user_id: text("user_id").notNull(),
     name: text("name").notNull(),
     prompt: text("prompt").notNull(),
     status: text("status").notNull().default("created"),
@@ -26,6 +28,37 @@ export const projects = pgTable(
     created_at: bigint("created_at", { mode: "number" }).notNull(),
     updated_at: bigint("updated_at", { mode: "number" }).notNull(),
   }
+);
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").unique(),
+  password_hash: text("password_hash"),
+  provider: text("provider").notNull().default("email"),
+  provider_id: text("provider_id"),
+  display_name: text("display_name"),
+  created_at: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  user_id: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token_hash: text("token_hash").notNull().unique(),
+  created_at: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const settings = pgTable(
+  "settings",
+  {
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.user_id, t.key] })]
 );
 
 export const runs = pgTable(

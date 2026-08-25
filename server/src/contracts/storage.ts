@@ -18,8 +18,22 @@ export type ProjectStatus =
   | "failed"
   | "interrupted";
 
+/** How a user authenticates. Social providers slot in without a schema change. */
+export type AuthProvider = "email" | "google" | "github";
+
+export interface User {
+  id: string;
+  email: string | null;
+  password_hash: string | null;
+  provider: AuthProvider;
+  provider_id: string | null;
+  display_name: string | null;
+  created_at: number;
+}
+
 export interface Project {
   id: string;
+  user_id: string;
   name: string;
   prompt: string;
   status: ProjectStatus;
@@ -58,9 +72,31 @@ export interface StudioEvent {
 }
 
 export interface StorageAdapter {
+  // users + sessions
+  createUser(u: {
+    id: string;
+    email: string | null;
+    passwordHash: string | null;
+    provider: AuthProvider;
+    providerId?: string | null;
+    displayName?: string | null;
+  }): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByProvider(provider: AuthProvider, providerId: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
+  createSession(userId: string, tokenHash: string): Promise<void>;
+  getUserBySessionToken(tokenHash: string): Promise<User | undefined>;
+  deleteSession(tokenHash: string): Promise<void>;
+
+  // per-user settings (provider API keys etc.)
+  getSetting(userId: string, key: string): Promise<string | undefined>;
+  setSetting(userId: string, key: string, value: string): Promise<void>;
+  listSettings(userId: string): Promise<Record<string, string>>;
+
   // projects
   createProject(p: {
     id: string;
+    userId: string;
     name: string;
     prompt: string;
     agent: string;
@@ -68,7 +104,7 @@ export interface StorageAdapter {
     platform: "ios" | "android" | "both";
   }): Promise<Project>;
   getProject(id: string): Promise<Project | undefined>;
-  listProjects(): Promise<Project[]>;
+  listProjects(userId: string): Promise<Project[]>;
   setProjectStatus(id: string, status: ProjectStatus): Promise<void>;
   setProjectExpUrl(id: string, expUrl: string | null, metroPort: number | null): Promise<void>;
   deleteProject(id: string): Promise<void>;

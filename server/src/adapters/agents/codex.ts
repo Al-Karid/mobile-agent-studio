@@ -13,7 +13,13 @@ export const codexAdapter: AgentAdapter = {
     const args = ["exec", "--dangerously-bypass-approvals-and-sandbox", req.prompt];
     return spawnToEvents("codex", args, {
       cwd: req.projectDir,
-      env: { ...process.env, ...req.env },
+      env: {
+        ...process.env,
+        ...req.env,
+        ...(req.credentials?.apiKey
+          ? { OPENAI_API_KEY: req.credentials.apiKey }
+          : {}),
+      },
     }, req.signal);
   },
 };
