@@ -140,7 +140,7 @@ export function setProjectStatus(id: string, status: ProjectStatus): void {
   ).run(status, now(), id);
 }
 
-export function setProjectExpUrl(id: string, expUrl: string, metroPort: number): void {
+export function setProjectExpUrl(id: string, expUrl: string | null, metroPort: number | null): void {
   db.prepare(
     `UPDATE projects SET exp_url = ?, metro_port = ?, updated_at = ? WHERE id = ?`
   ).run(expUrl, metroPort, now(), id);

@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { getProject, launchProject, type ProjectDetail } from "@/lib/api";
+import { getProject, type ProjectDetail } from "@/lib/api";
 import { useCorrection } from "@/hooks/use-correction";
+import { useProjectActions } from "@/hooks/use-project-actions";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "#8a8f98",
@@ -20,7 +21,6 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -41,35 +41,16 @@ export default function ProjectScreen() {
     }, [load])
   );
 
-  async function launch() {
-    if (!id) return;
-    setLaunching(true);
-    try {
-      await launchProject(id);
-      // Poll until the server reports an exp:// URL, then open it in Expo Go.
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const p = await getProject(id);
-        if (p.exp_url) {
-          setProject(p);
-          await Linking.openURL(p.exp_url);
-          setLaunching(false);
-          return;
-        }
-        if (p.status === "failed") throw new Error("launch failed");
-      }
-      throw new Error("launch timed out");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setLaunching(false);
-    }
-  }
-
   const status = project?.status ?? "…";
   const color = STATUS_COLORS[status] ?? "#999";
   const canLaunch = status === "ready" || status === "launched";
 
   const correction = useCorrection({ projectId: id, status });
+  const actions = useProjectActions({
+    projectId: id,
+    onProjectChange: setProject,
+    onError: (m) => setError(m),
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -89,11 +70,22 @@ export default function ProjectScreen() {
       {correction.error && <Text style={styles.error}>{correction.error}</Text>}
 
       {canLaunch && (
-        <Pressable onPress={launch} disabled={launching} style={styles.launchBtn}>
-          <Text style={styles.launchText}>
-            {launching ? "Opening…" : status === "launched" ? "Open again" : "Launch in Expo Go"}
-          </Text>
-        </Pressable>
+        <View style={styles.actionRow}>
+          <Pressable onPress={actions.launch} disabled={actions.launching} style={styles.launchBtn}>
+            <Text style={styles.launchText}>
+              {actions.launching ? "Opening…" : status === "launched" ? "Open again" : "Launch in Expo Go"}
+            </Text>
+          </Pressable>
+          {status === "launched" && (
+            <Pressable
+              onPress={actions.stop}
+              disabled={actions.stopping}
+              style={[styles.stopBtn, actions.stopping && { opacity: 0.4 }]}
+            >
+              <Text style={styles.stopText}>{actions.stopping ? "Stopping…" : "Stop"}</Text>
+            </Pressable>
+          )}
+        </View>
       )}
 
       <Text style={styles.sectionTitle}>Request changes</Text>
@@ -148,14 +140,24 @@ const styles = StyleSheet.create({
   statusText: { fontWeight: "700", fontSize: 13 },
   url: { marginTop: 10, fontSize: 13, color: "#4aa3ff" },
   error: { color: "#c00", marginTop: 10, fontSize: 13 },
+  actionRow: { marginTop: 16, flexDirection: "row", gap: 10 },
   launchBtn: {
-    marginTop: 16,
+    flex: 1,
     backgroundColor: "#111",
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
   },
   launchText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  stopBtn: {
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ff4136",
+    alignItems: "center",
+  },
+  stopText: { color: "#ff4136", fontWeight: "700", fontSize: 15 },
   sectionTitle: { marginTop: 24, fontSize: 13, fontWeight: "700", color: "#666", textTransform: "uppercase" },
   prompt: { marginTop: 6, fontSize: 15, color: "#333", lineHeight: 22 },
   eventRow: { flexDirection: "row", gap: 10, marginTop: 6 },

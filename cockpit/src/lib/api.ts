@@ -84,6 +84,11 @@ export async function launchProject(id: string): Promise<{ run: Run }> {
   return json(res);
 }
 
+export async function stopProject(id: string): Promise<{ project: Project }> {
+  const res = await fetch(`${await base()}/api/projects/${id}/stop`, { method: "POST" });
+  return json(res);
+}
+
 export async function health(): Promise<{ ok: boolean; defaultAgent: string; model: string }> {
   const res = await fetch(`${await base()}/api/health`);
   return json(res);
