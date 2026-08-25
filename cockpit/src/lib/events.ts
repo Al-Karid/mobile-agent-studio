@@ -1,4 +1,4 @@
-import type { ProjectDetail } from "@/lib/api";
+import type { ProjectDetail, StudioEvent } from "@/lib/api";
 
 /**
  * Chat timeline for a project — user prompts (bubbles) + REAL journaled events
@@ -41,6 +41,30 @@ const NOISE_STATUSES = new Set(["created", "queued", "launch queued"]);
 // Phases that are "work in progress" → show a spinner while current.
 const ONGOING_STATUSES = new Set(["initializing", "generating", "qa", "launching"]);
 
+/**
+ * Id of the NEWEST status event matching the current project status, or null.
+ * Only that event is "ongoing" (spinner) — a previous run's event with the same
+ * status must not spin again while a newer run is in that phase. Applies to
+ * every ongoing status (initializing, generating, qa, launching). Shared by the
+ * chat timeline and the project-settings Activity list.
+ */
+export function ongoingEventId(
+  events: StudioEvent[],
+  projectStatus: string
+): number | null {
+  let last: number | null = null;
+  for (const e of events) {
+    if (
+      e.type === "status" &&
+      ONGOING_STATUSES.has(e.message) &&
+      e.message === projectStatus
+    ) {
+      last = e.id;
+    }
+  }
+  return last;
+}
+
 /** Launch-related events (launching, exp://, stopped) group into a stack. */
 function isLaunchEvent(item: TimelineEventItem): boolean {
   if (item.type === "ready" && item.message.startsWith("exp://")) return true;
@@ -76,6 +100,10 @@ export function buildTimeline(project: ProjectDetail): TimelineItem[] {
     });
   }
 
+  // Only the NEWEST status event matching the current status is "ongoing"
+  // (spinner) — see ongoingEventId().
+  const ongoingId = ongoingEventId(project.events, project.status);
+
   // Real events — rendered as rows.
   for (const e of project.events) {
     if (e.type === "log") continue; // internal noise
@@ -94,10 +122,7 @@ export function buildTimeline(project: ProjectDetail): TimelineItem[] {
       message,
       at: e.created_at,
       runId: e.run_id,
-      ongoing:
-        e.type === "status" &&
-        ONGOING_STATUSES.has(e.message) &&
-        e.message === project.status,
+      ongoing: ongoingId === e.id,
     });
   }
 

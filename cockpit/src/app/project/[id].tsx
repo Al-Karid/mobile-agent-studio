@@ -160,6 +160,18 @@ export default function ProjectChatScreen() {
             />
           ) : item.kind === "launch" ? (
             <LaunchStack key={item.id} events={item.events} />
+          ) : item.kind === "event" && item.type === "agent_response" ? (
+            // The agent's actual response goes in a ghost-like bubble.
+            <MessageBubble
+              key={item.id}
+              turn={{
+                id: item.id,
+                role: "agent",
+                text: item.message,
+                status: "done",
+                runId: item.runId ?? 0,
+              }}
+            />
           ) : (
             <EventRow
               key={item.id}

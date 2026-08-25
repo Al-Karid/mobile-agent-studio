@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { ComponentProps } from "react";
 import { LinkText } from "@/components/link-text";
+import { statusLabel } from "@/lib/status";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -47,6 +48,9 @@ export function EventRow({
   error?: boolean;
 }) {
   const ic = eventIcon(type, message);
+  // Status rows show the humanized label ("generating" → "Building"); the raw
+  // message still drives the icon + launch grouping + exp:// detection.
+  const display = type === "status" ? statusLabel(message) : message;
   return (
     <View style={styles.row}>
       {ongoing ? (
@@ -64,7 +68,7 @@ export function EventRow({
         </LinkText>
       ) : (
         <Text style={[styles.msg, error && styles.msgError]} numberOfLines={3}>
-          {message}
+          {display}
         </Text>
       )}
     </View>

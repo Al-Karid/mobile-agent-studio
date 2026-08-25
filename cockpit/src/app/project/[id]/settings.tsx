@@ -9,6 +9,7 @@ import { useProjectStore } from "@/lib/project-store";
 import { updateProjectAgent } from "@/lib/api";
 import { noApiKeys, useAgentAvailability } from "@/lib/agent-keys";
 import { statusColor, statusLabel } from "@/lib/status";
+import { ongoingEventId } from "@/lib/events";
 import { EventRow } from "@/components/event-row";
 import { DangerZone } from "@/components/danger-zone";
 import { AgentSelector } from "@/components/agent-selector";
@@ -74,6 +75,9 @@ export default function ProjectSettingsScreen() {
     .filter((e) => !(e.type === "log" && /^starting metro on port/i.test(e.message)))
     .slice(-50)
     .reverse();
+
+  // Live spinner: the NEWEST status event matching the current status is ongoing.
+  const ongoingId = ongoingEventId(project?.events ?? [], project?.status ?? "");
 
   // Agent change — selector is locked to agents the user has a key for.
   const { settings, enabledAgents } = useAgentAvailability();
@@ -258,7 +262,12 @@ export default function ProjectSettingsScreen() {
               <Text style={styles.empty}>No activity yet.</Text>
             ) : (
               activities.map((e) => (
-                <EventRow key={e.id} type={e.type} message={e.message} />
+                <EventRow
+                  key={e.id}
+                  type={e.type}
+                  message={e.message}
+                  ongoing={ongoingId === e.id}
+                />
               ))
             )}
           </>
