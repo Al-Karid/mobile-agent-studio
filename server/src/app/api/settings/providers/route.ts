@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { storage } from "@/adapters/storage";
+import { config } from "@/lib/config";
 import { authUser } from "@/lib/auth";
 import {
   ALLOWED_AGENTS,
@@ -20,6 +21,8 @@ export async function GET(req: Request) {
   const s = await storage.listSettings(user.id);
   return NextResponse.json({
     agent: s[SETTING_KEYS.defaultAgent] ?? "cline",
+    // Server-driven model catalog (env configurable) for the model pickers.
+    models: config.models,
     cline: {
       provider: s[SETTING_KEYS.clineProvider] ?? "deepseek",
       model: s[SETTING_KEYS.clineModel] ?? "",

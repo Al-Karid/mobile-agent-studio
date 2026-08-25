@@ -28,13 +28,6 @@ const CLINE_PROVIDERS = [
   { id: "anthropic", label: "Anthropic" },
 ] as const;
 
-/** Model options per cline provider / agent (curated ids; match the CLIs). */
-const MODELS: Record<string, string[]> = {
-  deepseek: ["deepseek-v4-flash", "deepseek-v4"],
-  openai: ["gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o"],
-  anthropic: ["claude-sonnet-4-20250514", "claude-opus-4-20250514"],
-};
-
 /** Segmented selector (RN) — the app's standard control. */
 function Segmented({
   options,
@@ -138,6 +131,7 @@ export default function SettingsScreen() {
   const signOut = useAuthStore((s) => s.signOut);
 
   const [agent, setAgent] = useState("cline");
+  const [models, setModels] = useState<Record<string, string[]>>({});
   const [clineProvider, setClineProvider] = useState("deepseek");
   const [clineModel, setClineModel] = useState("");
   const [clineKeys, setClineKeys] = useState<Record<string, string>>({});
@@ -159,6 +153,7 @@ export default function SettingsScreen() {
     getProviderSettings()
       .then((p) => {
         setAgent(p.agent);
+        setModels(p.models);
         setClineProvider(p.cline.provider);
         setClineModel(p.cline.model);
         setClineKeys(p.cline.keys);
@@ -176,16 +171,15 @@ export default function SettingsScreen() {
 
   // A saved model must stay valid for the selected provider/agent; fall back
   // to that list's first option so the model picker always has a selection.
+  const clineModels = models[clineProvider] ?? [];
   const clineModelValue =
-    clineModel && MODELS[clineProvider].includes(clineModel)
-      ? clineModel
-      : MODELS[clineProvider][0];
+    clineModel && clineModels.includes(clineModel) ? clineModel : clineModels[0] ?? "";
+  const codexModels = models.openai ?? [];
   const codexModelValue =
-    codexModel && MODELS.openai.includes(codexModel) ? codexModel : MODELS.openai[0];
+    codexModel && codexModels.includes(codexModel) ? codexModel : codexModels[0] ?? "";
+  const claudeModels = models.anthropic ?? [];
   const claudeModelValue =
-    claudeModel && MODELS.anthropic.includes(claudeModel)
-      ? claudeModel
-      : MODELS.anthropic[0];
+    claudeModel && claudeModels.includes(claudeModel) ? claudeModel : claudeModels[0] ?? "";
 
   async function save() {
     if (busy) return;
@@ -212,6 +206,7 @@ export default function SettingsScreen() {
       setClaudeKey("");
       const p = await getProviderSettings();
       setAgent(p.agent);
+      setModels(p.models);
       setClineKeys(p.cline.keys);
       setCodexMasked(p.codex.key);
       setClaudeMasked(p.claude.key);
@@ -272,14 +267,14 @@ export default function SettingsScreen() {
           value={clineProvider}
           onChange={(p) => {
             setClineProvider(p);
-            setClineModel(MODELS[p][0]); // keep the model valid for the provider
+            setClineModel((models[p] ?? [])[0] ?? ""); // keep the model valid for the provider
           }}
         />
 
         <Text style={styles.label}>Model</Text>
         <ModelPicker
           value={clineModelValue}
-          models={MODELS[clineProvider]}
+          models={clineModels}
           onChange={setClineModel}
         />
 
@@ -305,7 +300,7 @@ export default function SettingsScreen() {
         <Text style={styles.hint}>OpenAI Codex — GPT models.</Text>
 
         <Text style={styles.label}>Model</Text>
-        <ModelPicker value={codexModelValue} models={MODELS.openai} onChange={setCodexModel} />
+        <ModelPicker value={codexModelValue} models={codexModels} onChange={setCodexModel} />
 
         <Text style={styles.label}>API key</Text>
         {codexMasked ? <Text style={styles.masked}>Saved key: {codexMasked}</Text> : null}
@@ -329,7 +324,7 @@ export default function SettingsScreen() {
         <Text style={styles.label}>Model</Text>
         <ModelPicker
           value={claudeModelValue}
-          models={MODELS.anthropic}
+          models={claudeModels}
           onChange={setClaudeModel}
         />
 

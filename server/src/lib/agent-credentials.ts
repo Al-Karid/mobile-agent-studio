@@ -30,8 +30,8 @@ export const ALLOWED_AGENTS = ["cline", "codex", "claude"] as const;
 /** Fallback cline model per provider when the user hasn't saved one. */
 const CLINE_MODEL_FALLBACKS: Record<string, string> = {
   deepseek: "", // → defaultModel (config.deepseek.model)
-  openai: process.env.CLINE_MODEL_OPENAI ?? "gpt-5",
-  anthropic: process.env.CLINE_MODEL_ANTHROPIC ?? "claude-sonnet-4-20250514",
+  openai: process.env.CLINE_MODEL_OPENAI ?? "gpt-5.6-sol",
+  anthropic: process.env.CLINE_MODEL_ANTHROPIC ?? "claude-sonnet-5",
 };
 
 export function resolveCredentials(

@@ -25,6 +25,25 @@ export const config = {
   },
   defaultAgent: str("DEFAULT_AGENT", "cline"),
   defaultValidator: str("DEFAULT_VALIDATOR", "none"),
+  // Model catalog served to the cockpit (Settings → model pickers). Comma-
+  // separated env lists; the first entry is each provider's default.
+  models: {
+    deepseek: str("DEEPSEEK_MODELS", "deepseek-v4-flash,deepseek-v4-pro")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    openai: str("OPENAI_MODELS", "gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    anthropic: str(
+      "ANTHROPIC_MODELS",
+      "claude-sonnet-5,claude-opus-5,claude-fable-5,claude-haiku-4-5-20251001"
+    )
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  },
   // Storage backend (Drizzle): sqlite | postgres | mysql. Swapping the DB is a
   // .env change — the orchestrator only talks to the StorageAdapter contract.
   storage: str("DATABASE_DRIVER", "sqlite"),

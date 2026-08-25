@@ -141,6 +141,8 @@ export async function me(): Promise<AuthUser> {
 export interface ProviderSettings {
   /** The user's default agent (cline | codex | claude). */
   agent: string;
+  /** Server-provided model catalog per provider (config-driven). */
+  models: Record<string, string[]>;
   cline: {
     provider: string;
     model: string;
