@@ -13,12 +13,17 @@ export interface Project {
 
 export interface Run {
   id: number;
+  project_id: string;
   kind: string;
   status: string;
   input: string | null;
   agent: string | null;
-  error: string | null;
+  model: string | null;
   log: string;
+  error: string | null;
+  commit_sha: string | null;
+  created_at: number;
+  finished_at: number | null;
 }
 
 export interface StudioEvent {

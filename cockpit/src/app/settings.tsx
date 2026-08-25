@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { getApiUrl, setApiUrl } from "@/lib/settings";
 import { health } from "@/lib/api";
 
 export default function SettingsScreen() {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<string | null>(null);
+
+  // iOS header is transparent → content must start below it there.
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
 
   useEffect(() => {
     getApiUrl().then(setUrl);
@@ -27,7 +31,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: headerTopInset + 16 }]}>
       <Text style={styles.label}>Server URL</Text>
       <TextInput
         style={styles.input}

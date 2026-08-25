@@ -1,8 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useProject } from "@/hooks/use-project";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { statusColor } from "@/lib/status";
+import { EventRow } from "@/components/event-row";
 
 /** Project settings — everything that doesn't belong on the chat page. */
 export default function ProjectSettingsScreen() {
@@ -16,11 +18,17 @@ export default function ProjectSettingsScreen() {
     onError: setError,
   });
 
+  // iOS header is transparent → scroll content must start below it there.
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
+
   const status = project?.status ?? "…";
   const running = status === "launched";
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: headerTopInset + 16 }]}
+    >
       <Text style={styles.section}>Status</Text>
       <View style={[styles.badge, { borderColor: statusColor(status) }]}>
         <Text style={[styles.badgeText, { color: statusColor(status) }]}>{status}</Text>
@@ -54,12 +62,7 @@ export default function ProjectSettingsScreen() {
 
       <Text style={styles.section}>Activity</Text>
       {(project?.events ?? []).slice(-50).map((e) => (
-        <View key={e.id} style={styles.eventRow}>
-          <Text style={styles.eventType}>{e.type}</Text>
-          <Text style={styles.eventMsg} numberOfLines={3}>
-            {e.message}
-          </Text>
-        </View>
+        <EventRow key={e.id} type={e.type} message={e.message} />
       ))}
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -99,8 +102,5 @@ const styles = StyleSheet.create({
   row: { marginTop: 6, fontSize: 14, color: "#333" },
   mono: { color: "#4aa3ff" },
   prompt: { marginTop: 6, fontSize: 15, color: "#333", lineHeight: 22 },
-  eventRow: { flexDirection: "row", gap: 10, marginTop: 6 },
-  eventType: { color: "#999", fontSize: 12, width: 90 },
-  eventMsg: { color: "#333", fontSize: 13, flex: 1 },
   error: { color: "#c00", marginTop: 12, fontSize: 13 },
 });

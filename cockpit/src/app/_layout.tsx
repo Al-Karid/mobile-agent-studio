@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -10,9 +11,31 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ title: "Projects" }} />
         <Stack.Screen name="new" options={{ title: "New Project", presentation: "modal" }} />
-        <Stack.Screen name="project/[id]" options={{ title: "Project" }} />
-        <Stack.Screen name="project/[id]/settings" options={{ title: "Settings" }} />
-        <Stack.Screen name="settings" options={{ title: "Settings", presentation: "modal" }} />
+        <Stack.Screen
+          name="project/[id]"
+          options={{
+            title: "Project",
+            // iOS only: let the page background extend behind the header.
+            headerTransparent: Platform.select({ ios: true, default: false }),
+            headerBackButtonDisplayMode: "minimal"
+          }}
+        />
+        <Stack.Screen
+          name="project/[id]/settings"
+          options={{
+            title: "Settings",
+            headerTransparent: Platform.select({ ios: true, default: false }),
+            headerBackButtonDisplayMode: "minimal"
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: "Settings",
+            presentation: "modal",
+            headerTransparent: Platform.select({ ios: true, default: false }),
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </KeyboardProvider>

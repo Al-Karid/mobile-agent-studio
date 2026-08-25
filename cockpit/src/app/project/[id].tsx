@@ -1,15 +1,18 @@
 import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
+import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useChat } from "@/hooks/use-chat";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { statusColor } from "@/lib/status";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInputBar } from "@/components/chat/input-bar";
 import { OpenAppButton } from "@/components/open-app-button";
+import { EventRow } from "@/components/event-row";
+import { LaunchStack } from "@/components/launch-stack";
 
 /**
  * Minimalist ChatGPT-style project page: user/agent turns, an input bar,
@@ -18,8 +21,18 @@ import { OpenAppButton } from "@/components/open-app-button";
  */
 export default function ProjectChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { project, error, setProject, setError, turns, input, setInput, send, busy, sendError } =
-    useChat(id);
+  const {
+    project,
+    error,
+    setProject,
+    setError,
+    timeline,
+    input,
+    setInput,
+    send,
+    busy,
+    sendError,
+  } = useChat(id);
   const actions = useProjectActions({
     projectId: id,
     status: project?.status,
@@ -28,6 +41,9 @@ export default function ProjectChatScreen() {
     onError: setError,
   });
   const scrollRef = useRef<ScrollView>(null);
+
+  // iOS header is transparent → content must start below it there.
+  const headerTopInset = Platform.OS === "ios" ? useHeaderHeight() : 0;
 
   const openVisible =
     !!project && (project.status === "ready" || project.status === "launched");
@@ -69,8 +85,8 @@ export default function ProjectChatScreen() {
         }}
       />
 
-      {/* slim bar: project name + status dot + Open action */}
-      <View style={styles.bar}>
+      {/* slim bar: project name + status dot + Open action (below transparent header) */}
+      <View style={[styles.bar, { paddingTop: headerTopInset }]}>
         <View style={styles.titleWrap}>
           {project && (
             <View style={[styles.dot, { backgroundColor: statusColor(project.status) }]} />
@@ -93,12 +109,32 @@ export default function ProjectChatScreen() {
         keyboardDismissMode="interactive"
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        {turns.length === 0 && (
+        {timeline.length === 0 && (
           <Text style={styles.empty}>Ask me to build or change this app…</Text>
         )}
-        {turns.map((t) => (
-          <MessageBubble key={t.id} turn={t} onAnswer={send} />
-        ))}
+        {timeline.map((item) =>
+          item.kind === "user" ? (
+            <MessageBubble
+              key={item.id}
+              turn={{
+                id: item.id,
+                role: "user",
+                text: item.text,
+                status: "done",
+                runId: item.runId,
+              }}
+            />
+          ) : item.kind === "launch" ? (
+            <LaunchStack key={item.id} events={item.events} />
+          ) : (
+            <EventRow
+              key={item.id}
+              type={item.type}
+              message={item.message}
+              ongoing={item.ongoing}
+            />
+          )
+        )}
       </ScrollView>
 
       {/* input — self-contained keyboard behavior; screen scrolls on open */}
