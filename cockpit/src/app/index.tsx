@@ -68,9 +68,9 @@ export default function ProjectsScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.greeting}>
-              <Text style={styles.greetingTitle}>Hello there</Text>
+              <Text style={styles.greetingTitle}>Hello There !</Text>
               <Text style={styles.greetingSubtitle}>
-                So what do we build today?
+                So what are we building today?
               </Text>
             </View>
             {error ? (
