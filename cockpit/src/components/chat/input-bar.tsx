@@ -4,6 +4,14 @@ import Animated, { Extrapolation, interpolate, useAnimatedStyle } from "react-na
 import { useKeyboardHeight } from "@/hooks/use-keyboard";
 
 /**
+ * The input pill's resting clearance above its anchor (screen bottom when the
+ * keyboard is hidden, keyboard top when visible). It tucks closer to the
+ * keyboard, so the chat list mirrors the delta to keep the gap between the
+ * last message and the pill identical in both states.
+ */
+export const INPUT_PILL_CLEARANCE = { closed: 44, open: 15 } as const;
+
+/**
  * Bottom prompt input — the send button lives inside the pill. Keyboard
  * behavior follows the Expo guide's chat pattern: the bottom padding AND the
  * spacer are driven by the SAME keyboard-height value, so show and dismiss
@@ -32,7 +40,12 @@ export function ChatInputBar({
 
   // 44px above the bottom when closed → 15px above the keyboard when open.
   const wrapStyle = useAnimatedStyle(() => ({
-    paddingBottom: interpolate(height.value, [0, target.value], [44, 15], Extrapolation.CLAMP),
+    paddingBottom: interpolate(
+      height.value,
+      [0, target.value],
+      [INPUT_PILL_CLEARANCE.closed, INPUT_PILL_CLEARANCE.open],
+      Extrapolation.CLAMP
+    ),
   }));
 
   // Docs pattern: the spacer follows the keyboard height on every frame.

@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
@@ -17,7 +17,7 @@ import { useChat } from "@/hooks/use-chat";
 import { useKeyboardHeight } from "@/hooks/use-keyboard";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { MessageBubble } from "@/components/chat/message-bubble";
-import { ChatInputBar } from "@/components/chat/input-bar";
+import { ChatInputBar, INPUT_PILL_CLEARANCE } from "@/components/chat/input-bar";
 import { EventRow } from "@/components/event-row";
 import { LaunchStack } from "@/components/launch-stack";
 
@@ -53,12 +53,22 @@ export default function ProjectChatScreen() {
   // stays hidden behind it while typing. The same keyboard value that lifts
   // the input bar shrinks the scroll viewport's bottom edge frame-by-frame;
   // `onKeyboardEnd` re-pins the content once the keyboard settles open.
-  const { height: keyboardHeight } = useKeyboardHeight(
+  const { height: keyboardHeight, target: keyboardTarget } = useKeyboardHeight(
     undefined,
     () => scrollRef.current?.scrollToEnd({ animated: true })
   );
   const scrollBottom = useAnimatedStyle(() => ({
-    bottom: keyboardHeight.value,
+    // The pill tucks 44px → 15px closer to its anchor as the keyboard rises.
+    // Raise the list's bottom by the SAME delta, so the gap between the last
+    // message and the pill is identical whether the keyboard is up or down.
+    bottom:
+      keyboardHeight.value -
+      interpolate(
+        keyboardHeight.value,
+        [0, keyboardTarget.value],
+        [0, INPUT_PILL_CLEARANCE.closed - INPUT_PILL_CLEARANCE.open],
+        Extrapolation.CLAMP
+      ),
   }));
 
   // Pin to the latest message only while the user is ALREADY at the bottom —
