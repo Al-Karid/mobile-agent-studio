@@ -195,6 +195,7 @@ export default function ProjectSettingsScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingTop: headerTopInset + 16 }]}
+        showsVerticalScrollIndicator={false}
       >
       {/* Header: project name + status pill */}
       <View style={styles.header}>

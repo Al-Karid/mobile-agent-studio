@@ -185,6 +185,7 @@ export default function ProjectChatScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onContentSizeChange={handleContentSizeChange}
+        showsVerticalScrollIndicator={false}
       >
         {timeline.length === 0 && (
           <Text style={styles.empty}>Ask me to build or change this app…</Text>
