@@ -49,6 +49,9 @@ export const config = {
   storage: str("DATABASE_DRIVER", "sqlite"),
   databaseUrl: str("DATABASE_URL", path.join(process.cwd(), "data", "studio.db")),
   port: int("PORT", 3000),
+  // Dev mode (npm run dev / non-production) — gates extra console diagnostics
+  // (e.g. which shared skills the coding agent loads).
+  dev: process.env.NODE_ENV !== "production",
   // Start of the dedicated Metro port range for GENERATED apps. The cockpit's
   // dev Metro occupies 8081, so generated apps are allocated 8100+ dynamically.
   metroPort: int("METRO_PORT", 8100),

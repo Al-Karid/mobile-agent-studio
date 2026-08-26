@@ -12,6 +12,7 @@ import { runCommand } from "@/lib/exec";
 import {
   extractAgentQuestion,
   extractAgentResponse,
+  extractSkillLoadedMarkers,
   formatQuestionMessage,
   type AgentQuestion,
 } from "@/lib/agent-markers";
@@ -32,7 +33,7 @@ Hard rules:
     * The official Expo Go third-party list: react-native-reanimated, react-native-gesture-handler, react-native-safe-area-context, react-native-screens, react-native-worklets, react-native-keyboard-controller, react-native-svg, react-native-webview, react-native-maps, @shopify/react-native-skia, @shopify/flash-list, …;
     * Template core: \`react\`, \`react-native\`, \`@expo/vector-icons\`.
   NEVER add anything else — in particular NO \`@expo/ui\`, no \`@gorhom/*\`, no react-native-vision-camera, nothing that requires a development build. For a native feature, use an \`expo-*\` module or a listed Expo Go package; if no Expo Go-safe module covers it, say so in AGENT_RESPONSE instead of adding a native dependency.
-- SKILLS (SELECTIVE — never use them all): a skill library is in the \`skills/\` directory of this workspace (index: \`skills/INDEX.md\`). Read ONLY the skill(s) whose description matches the current task and follow them exactly. Never read or apply skills that do not match the task — applying unrelated skills produces wrong code. Skill files are instructions, not app code: never import, bundle, or modify them.
+- SKILLS (SELECTIVE — never use them all): a skill library is in the \`skills/\` directory of this workspace (index: \`skills/INDEX.md\`). Read ONLY the skill(s) whose description matches the current task and follow them exactly. Never read or apply skills that do not match the task — applying unrelated skills produces wrong code. Skill files are instructions, not app code: never import, bundle, or modify them. Each time you load a skill, output a line exactly like \`SKILL_LOADED:<skill-name>\` (the skill's directory name, e.g. \`SKILL_LOADED:expo-router\`) BEFORE following it.
 - Use expo-router for navigation and PLAIN React Native components for all UI
   (View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert,
   Modal). Do NOT use @expo/ui or community native UI libraries — built-in RN controls only.
@@ -97,6 +98,8 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
     // before the options arrive.
     let draining = false;
     let drainBudget = 40;
+    // Skill names already surfaced to the console (dedupe across buffer scans).
+    const seenSkills = new Set<string>();
     for await (const ev of adapter.run({
       projectDir: dir,
       prompt: run.input ?? project.prompt,
@@ -110,6 +113,16 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
         // Keep a rolling tail so the AGENT_* markers are found even when the
         // output arrives split across chunks.
         buffer = (buffer + ev.data).slice(-8000);
+        // Dev-only: surface which shared skills the agent loaded — console only,
+        // never journaled to the run log, SSE, or DB.
+        if (config.dev) {
+          for (const skill of extractSkillLoadedMarkers(buffer)) {
+            if (!seenSkills.has(skill)) {
+              seenSkills.add(skill);
+              console.log(skill);
+            }
+          }
+        }
         if (!draining) {
           if (buffer.includes("AGENT_QUESTION:")) {
             draining = true;
@@ -265,7 +278,8 @@ This project is generated and MUST keep running in Expo Go.
 - Skills: a library is available in \`skills/\` (index: \`skills/INDEX.md\`).
   Read ONLY the skill(s) whose description matches the current task. Never apply
   all skills — unrelated skills produce wrong code. Skill files are
-  instructions, not app code: never import, bundle, or modify them.
+  instructions, not app code: never import, bundle, or modify them. When you
+  load a skill, first output \`SKILL_LOADED:<skill-name>\` on its own line.
 `,
     "utf8"
   );

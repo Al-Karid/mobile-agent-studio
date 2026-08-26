@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   extractAgentResponse,
   extractAgentQuestion,
+  extractSkillLoadedMarkers,
   formatQuestionMessage,
 } from "./agent-markers";
 
@@ -64,6 +65,37 @@ test("extractAgentQuestion stops at a duplicated marker block after the options"
     question: "Which color should the new button be?",
     options: ["red", "blue", "green"],
   });
+});
+
+test("extractSkillLoadedMarkers returns loaded skill names in order", () => {
+  const buffer =
+    "working…\nSKILL_LOADED:expo-router\nreading it…\nSKILL_LOADED:expo-animation\n";
+  assert.deepEqual(extractSkillLoadedMarkers(buffer), [
+    "expo-router",
+    "expo-animation",
+  ]);
+});
+
+test("extractSkillLoadedMarkers tolerates whitespace around the name", () => {
+  const buffer = "SKILL_LOADED:  expo-dom  \n";
+  assert.deepEqual(extractSkillLoadedMarkers(buffer), ["expo-dom"]);
+});
+
+test("extractSkillLoadedMarkers ignores a partial (still-streaming) last line", () => {
+  // No trailing newline → the last line may be a split chunk: do NOT match it.
+  assert.deepEqual(extractSkillLoadedMarkers("SKILL_LOADED:expo-rou"), []);
+});
+
+test("extractSkillLoadedMarkers matches a marker completed by a later chunk", () => {
+  const first = "SKILL_LOADED:expo-rou"; // split across chunks
+  const second = "ter\nnext line\n";
+  assert.deepEqual(extractSkillLoadedMarkers(first), []);
+  assert.deepEqual(extractSkillLoadedMarkers(first + second), ["expo-router"]);
+});
+
+test("extractSkillLoadedMarkers returns [] when absent", () => {
+  assert.deepEqual(extractSkillLoadedMarkers("no marker here\n"), []);
+  assert.deepEqual(extractSkillLoadedMarkers("SKILL_LOADED\n"), []);
 });
 
 test("formatQuestionMessage round-trips through parsing", () => {

@@ -8,6 +8,8 @@ This library holds pattern guides for building Expo apps that run in **Expo Go**
 - Read and follow **ONLY the skill(s) whose description matches the current task**.
 - **Never** read or apply all skills — applying unrelated skills produces wrong code.
 - When a task does not match any skill, work without skills.
+- When you load a skill, first output `SKILL_LOADED:<skill-name>` (the directory
+  name, e.g. `SKILL_LOADED:expo-router`) on its own line.
 - These files are **instructions, not app code**: never import, bundle, copy into
   `src/`, or modify them. They are gitignored and not part of the app.
 

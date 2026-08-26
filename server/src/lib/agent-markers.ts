@@ -12,6 +12,9 @@
  * The question is journaled as an event `type: "question"` whose message is
  * `question + QUESTION_OPTIONS_SEPARATOR + options joined by "\n"` — the
  * cockpit parses that exact format to render option chips.
+ *
+ * The agent also emits `SKILL_LOADED:<skill-name>` (one line, each time it
+ * loads a skill from the shared skills/ library) — dev-only console logging.
  */
 export interface AgentQuestion {
   question: string;
@@ -28,6 +31,25 @@ export const QUESTION_OPTIONS_SEPARATOR = "\n---options---\n";
 export function extractAgentResponse(buffer: string): string | null {
   const m = buffer.match(/[\s\S]*AGENT_RESPONSE:\s*([\s\S]*)$/);
   return m ? m[1].trim() : null;
+}
+
+/**
+ * All `SKILL_LOADED:<skill-name>` markers in the buffer, in order.
+ *
+ * Only COMPLETE lines are trusted: the buffer is a rolling stream tail whose
+ * last line may be a partial chunk (e.g. `SKILL_LOADED:expo-rou…`). A line is
+ * considered complete only when it is terminated by a newline in the buffer —
+ * a marker whose line is still streaming is picked up on a later chunk.
+ */
+export function extractSkillLoadedMarkers(buffer: string): string[] {
+  const out: string[] = [];
+  const lines = buffer.split("\n");
+  const complete = buffer.endsWith("\n") ? lines : lines.slice(0, -1);
+  for (const line of complete) {
+    const m = line.match(/^\s*SKILL_LOADED:\s*([A-Za-z0-9._-]+)\s*$/);
+    if (m) out.push(m[1]);
+  }
+  return out;
 }
 
 /** Parse an `AGENT_QUESTION:` block (+ optional `OPTIONS:` bullets). */
