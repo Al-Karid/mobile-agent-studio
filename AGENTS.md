@@ -30,10 +30,12 @@ docs/      Architecture & design notes
    and returns immediately (`202`). A background job executes it; the client follows
    via SSE and can reconnect/replay at any time (offline-safe). Each step is a git
    commit → resume from the last checkpoint after any interruption.
-4. **"Expo Go-safe" is a promise.** After generation, every dependency in the
-   generated `package.json` must be in the Expo Go allow-list
-   (`server/src/lib/expo-go.ts`). Anything outside → flag "requires a development
-   build" instead of shipping a broken app.
+4. **"Expo Go-safe" is a promise — strict.** Generated apps may depend ONLY on
+   `expo-*` modules + the template core/native stack (see `server/src/lib/expo-go.ts`).
+   No external native modules, no `@expo/ui` — even the official Expo Go third-party
+   list is denied by policy. The agent instructions enforce it, `initProject` prunes
+   the template's own `@expo/ui` off every scaffold, and QA flags anything outside →
+   status `needs_dev_build` instead of shipping a broken app.
 
 ## How to run & test (server/)
 

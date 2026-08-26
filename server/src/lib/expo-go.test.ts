@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateDeps } from "./expo-go";
+import { filterAllowed, validateDeps } from "./expo-go";
 
 test("validateDeps: Expo Go-safe deps pass", () => {
   const r = validateDeps({
@@ -47,4 +47,59 @@ test("validateDeps: @react-navigation and expo-* are allowed", () => {
     },
   });
   assert.equal(r.ok, true);
+});
+
+test("validateDeps: official Expo Go third-party natives are flagged (strict policy)", () => {
+  const r = validateDeps({
+    dependencies: {
+      "react-native-maps": "1.18.0",
+      "react-native-webview": "13.13.0",
+      "@shopify/react-native-skia": "~2.0.0",
+      "react-native-keyboard-controller": "1.21.9",
+      "@react-native-async-storage/async-storage": "~2.1.0",
+      "@react-native-community/netinfo": "~11.4.0",
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.deepEqual([...r.violations].sort(), [
+    "@react-native-async-storage/async-storage",
+    "@react-native-community/netinfo",
+    "@shopify/react-native-skia",
+    "react-native-keyboard-controller",
+    "react-native-maps",
+    "react-native-webview",
+  ]);
+});
+
+test("validateDeps: the expo-router template native stack is allowed", () => {
+  const r = validateDeps({
+    dependencies: {
+      expo: "~57.0.16",
+      "expo-router": "~57.0.16",
+      react: "19.2.3",
+      "react-native": "0.86.2",
+      "react-native-gesture-handler": "~2.32.0",
+      "react-native-reanimated": "4.5.1",
+      "react-native-safe-area-context": "~5.7.0",
+      "react-native-screens": "~4.26.0",
+      "react-native-worklets": "0.10.1",
+    },
+  });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.violations, []);
+});
+
+test("filterAllowed: prunes non-allow-listed deps (e.g. @expo/ui from the template)", () => {
+  const kept = filterAllowed({
+    expo: "~57.0.16",
+    "@expo/ui": "~57.0.13",
+    "expo-glass-effect": "~57.0.1",
+    "react-native-screens": "~4.26.0",
+    "react-native-maps": "1.18.0",
+  });
+  assert.deepEqual(kept, {
+    expo: "~57.0.16",
+    "expo-glass-effect": "~57.0.1",
+    "react-native-screens": "~4.26.0",
+  });
 });

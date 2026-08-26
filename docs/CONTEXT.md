@@ -17,8 +17,9 @@ Author: CISSE Alassane Al Moustapha, developer at ARTI (transports), Abidjan, C�
 
 The user wants to prototype and generate simple Expo apps from his iPhone without
 opening a laptop. V1 targets: **human validation** (he reviews the app visually in
-Expo Go), a **$0-20 total budget**, and **"Expo Go-safe guaranteed"** — every
-generated dependency must be in Expo Go, otherwise the app is flagged, never shipped broken.
+Expo Go), a **$0-20 total budget**, and **"Expo Go-safe guaranteed"** — generated
+apps may depend ONLY on `expo-*` modules (+ the template core/native stack); any
+external native module is flagged, never shipped broken.
 
 ## Settled decisions (do not re-litigate without asking)
 
@@ -30,6 +31,7 @@ generated dependency must be in Expo Go, otherwise the app is flagged, never shi
 | Human visual validation (validator "none") | keeps the backend 100% portable (no macOS simulator); the user is the observer | agent-device (Expo's automated device validator) — deferred |
 | No Docker in V1 | Metro↔iPhone + Docker Desktop friction (port mapping, node_modules volumes) | Docker now |
 | create-expo-app **default** template | real, feature-complete starting point | "blank" template (faster but bare) — **open: may switch for speed** |
+| Generated apps: **`expo-*` modules only** (+ template core/native stack), **no external native modules** | the default template ships `@expo/ui`, which leaked into generated apps; strict policy = instructions + validator + template prune (`expo-go.ts` `filterAllowed`) | "Expo Go-safe" allow-list (still *runs* in Expo Go, but allows third-party natives like maps/webview/skia) |
 | Agent = Cline CLI + DeepSeek v4-flash, `--thinking none` | cheap (~$0.03/app measured), fast enough | default thinking mode (streams endless reasoning tokens → slow, costly) |
 
 ## User preferences & constraints (honor these)

@@ -6,7 +6,7 @@ import { publish } from "@/lib/sse";
 import { getAgent } from "@/adapters/agents";
 import { getValidator } from "@/adapters/validators";
 import { resolveCredentials } from "@/lib/agent-credentials";
-import { validateDeps } from "@/lib/expo-go";
+import { filterAllowed, validateDeps } from "@/lib/expo-go";
 import { gitInit, gitCommit } from "@/lib/git";
 import { runCommand } from "@/lib/exec";
 import {
@@ -27,12 +27,15 @@ const AGENT_CONTEXT = `You are generating an Expo (React Native) app that MUST r
 
 Hard rules:
 - A choice only the user can make (color, name, wording, behavior) must NEVER be guessed. If the request involves one — or uses words like "ask me", "which", "choose", or "let me decide" — you MUST STOP and ask via AGENT_QUESTION BEFORE writing ANY app file. Output \`AGENT_QUESTION:\` with the question on one line, then \`OPTIONS:\` with one \`- option\` per line, and do not write any app files after asking.
-- Target the LATEST Expo SDK.
+- DEPENDENCIES (STRICT HARD GATE — a generated app is rejected if you violate it): add ONLY these packages:
+    * Expo modules: \`expo\` and any \`expo-*\` package (expo-router, expo-camera, expo-sqlite, expo-location, expo-notifications, expo-status-bar, expo-blur, expo-haptics, expo-image, expo-sound, …);
+    * Template core: \`react\`, \`react-native\`, \`@expo/vector-icons\`;
+    * The expo-router-required native stack ONLY: \`react-native-screens\`, \`react-native-safe-area-context\`, \`react-native-gesture-handler\`, \`react-native-reanimated\`, \`react-native-worklets\`.
+  NEVER add any other package — no \`@expo/ui\`, no \`@gorhom/*\`, no other \`react-native-*\` package (maps, webview, camera, skia, flash-list, pager, …), no \`@react-native-*\` community package, no third-party SDK. For a native feature, use the matching \`expo-*\` module or plain React Native APIs; if no \`expo-*\` module covers it, say so in AGENT_RESPONSE instead of adding a native dependency. Anything that is NOT bundled in Expo Go (installing it would require a development build) is FORBIDDEN — if in doubt, use an \`expo-*\` module instead.
 - Use expo-router for navigation and PLAIN React Native components for all UI
   (View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert,
-  Modal) with @expo/vector-icons for icons. Do NOT use @expo/ui or community
-  native UI libraries like @gorhom/bottom-sheet — built-in RN controls only.
-- Only depend on packages in the Expo Go allow-list (expo-* modules + the official third-party list). If the user asks for something outside it, choose an Expo Go-safe alternative instead.
+  Modal). Do NOT use @expo/ui or community native UI libraries — built-in RN controls only.
+- Target the LATEST Expo SDK.
 - Run \`npx tsc --noEmit\` and fix all errors before finishing.
 - Never create or edit ios/ or android/ by hand (Continuous Native Generation).
 
@@ -58,7 +61,13 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
   try {
     // 1. initialize
     await setStatus("initializing");
-    await initProject(dir, project.agent);
+    const pruned = await initProject(dir, project.agent);
+    if (pruned.length > 0) {
+      await emit(
+        "log",
+        `template deps pruned to the strict Expo allow-list: ${pruned.join(", ")}`
+      );
+    }
     await emit("log", "project initialized");
 
     // 2. generate
@@ -193,7 +202,7 @@ export async function runGenerateJob(run: Run, project: Project): Promise<void> 
   }
 }
 
-async function initProject(dir: string, agent: string): Promise<void> {
+async function initProject(dir: string, agent: string): Promise<string[]> {
   fs.mkdirSync(dir, { recursive: true });
 
   // dry-run writes its own minimal project; real agents need a scaffold.
@@ -208,9 +217,28 @@ async function initProject(dir: string, agent: string): Promise<void> {
     }
   }
 
+  // The default template ships deps outside the strict "expo-* only" allow-list
+  // (notably @expo/ui). Prune them so every generated app starts compliant.
+  const pruned = pruneNonExpoDeps(dir);
+
   if (!fs.existsSync(path.join(dir, ".git"))) {
     await gitInit(dir);
   }
+  return pruned;
+}
+
+/** Remove any direct dependency that isn't on the strict allow-list. */
+function pruneNonExpoDeps(dir: string): string[] {
+  const pkgPath = path.join(dir, "package.json");
+  if (!fs.existsSync(pkgPath)) return [];
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  const before = Object.keys(pkg.dependencies ?? {});
+  pkg.dependencies = filterAllowed(pkg.dependencies ?? {});
+  const removed = before.filter((name) => !(name in pkg.dependencies));
+  if (removed.length > 0) {
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+  }
+  return removed;
 }
 
 async function runQa(dir: string): Promise<{
