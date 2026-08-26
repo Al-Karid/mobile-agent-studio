@@ -4,16 +4,17 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { HeaderButton } from "expo-router/build/react-navigation/elements/Header/HeaderButton";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useChat } from "@/hooks/use-chat";
+import { useKeyboardHeight } from "@/hooks/use-keyboard";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInputBar } from "@/components/chat/input-bar";
@@ -46,7 +47,19 @@ export default function ProjectChatScreen() {
     onProjectChange: setProject,
     onError: setError,
   });
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // The floating list must END above the keyboard, otherwise the last message
+  // stays hidden behind it while typing. The same keyboard value that lifts
+  // the input bar shrinks the scroll viewport's bottom edge frame-by-frame;
+  // `onKeyboardEnd` re-pins the content once the keyboard settles open.
+  const { height: keyboardHeight } = useKeyboardHeight(
+    undefined,
+    () => scrollRef.current?.scrollToEnd({ animated: true })
+  );
+  const scrollBottom = useAnimatedStyle(() => ({
+    bottom: keyboardHeight.value,
+  }));
 
   // Pin to the latest message only while the user is ALREADY at the bottom —
   // incoming content keeps the view stuck, but expanding/collapsing a launch
@@ -150,9 +163,9 @@ export default function ProjectChatScreen() {
       )}
 
       {/* conversation — fullscreen; content scrolls under the floating input */}
-      <ScrollView
+      <Animated.ScrollView
         ref={scrollRef}
-        style={styles.messages}
+        style={[styles.messages, scrollBottom]}
         contentContainerStyle={[
           styles.messagesContent,
           { paddingTop: headerTopInset + 16 },
@@ -221,7 +234,7 @@ export default function ProjectChatScreen() {
             />
           ),
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* floating input — overlays the bottom of the fullscreen conversation */}
       <View style={styles.inputFloat} pointerEvents="box-none">
@@ -254,7 +267,10 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
-  messages: { flex: 1 },
+  // Anchored to the top and the screen bottom by default; the animated
+  // `bottom` raises it to the keyboard's top edge while typing, so the last
+  // message is never hidden behind the keyboard.
+  messages: { position: "absolute", left: 0, right: 0, top: 0 },
   // Bottom clearance so the last message isn't hidden behind the floating input.
   messagesContent: { padding: 16, paddingBottom: 140 },
   empty: { textAlign: "center", color: "#999", marginTop: 60, fontSize: 14 },

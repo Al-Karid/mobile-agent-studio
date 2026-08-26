@@ -9,8 +9,15 @@ import { runOnJS, useSharedValue } from "react-native-reanimated";
  * resting position. Direction is detected by comparing the new height against the
  * previous one (NOT onStart, which is unreliable for direction and was blocking
  * the open animation, leaving the input hidden behind the keyboard).
+ *
+ * `onKeyboardShow` fires on the first frame the keyboard starts rising (good for
+ * an immediate response); `onKeyboardEnd` fires once it fully settles open (good
+ * for a final, exact re-pin).
  */
-export function useKeyboardHeight(onKeyboardShow?: () => void) {
+export function useKeyboardHeight(
+  onKeyboardShow?: () => void,
+  onKeyboardEnd?: () => void
+) {
   const height = useSharedValue(0);
   const target = useSharedValue(300);
   const shown = useSharedValue(false);
@@ -46,6 +53,7 @@ export function useKeyboardHeight(onKeyboardShow?: () => void) {
         "worklet";
         closing.value = false;
         height.value = e.height > 0 ? e.height : 0;
+        if (e.height > 0 && onKeyboardEnd) runOnJS(onKeyboardEnd)();
       },
     },
     []
