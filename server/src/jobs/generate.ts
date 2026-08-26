@@ -27,11 +27,12 @@ const AGENT_CONTEXT = `You are generating an Expo (React Native) app that MUST r
 
 Hard rules:
 - A choice only the user can make (color, name, wording, behavior) must NEVER be guessed. If the request involves one — or uses words like "ask me", "which", "choose", or "let me decide" — you MUST STOP and ask via AGENT_QUESTION BEFORE writing ANY app file. Output \`AGENT_QUESTION:\` with the question on one line, then \`OPTIONS:\` with one \`- option\` per line, and do not write any app files after asking.
-- DEPENDENCIES (STRICT HARD GATE — a generated app is rejected if you violate it): add ONLY these packages:
+- DEPENDENCIES (STRICT HARD GATE — a generated app is rejected if you violate it): add ONLY packages that run in Expo Go with NO development build:
     * Expo modules: \`expo\` and any \`expo-*\` package (expo-router, expo-camera, expo-sqlite, expo-location, expo-notifications, expo-status-bar, expo-blur, expo-haptics, expo-image, expo-sound, …);
-    * Template core: \`react\`, \`react-native\`, \`@expo/vector-icons\`;
-    * The expo-router-required native stack ONLY: \`react-native-screens\`, \`react-native-safe-area-context\`, \`react-native-gesture-handler\`, \`react-native-reanimated\`, \`react-native-worklets\`.
-  NEVER add any other package — no \`@expo/ui\`, no \`@gorhom/*\`, no other \`react-native-*\` package (maps, webview, camera, skia, flash-list, pager, …), no \`@react-native-*\` community package, no third-party SDK. For a native feature, use the matching \`expo-*\` module or plain React Native APIs; if no \`expo-*\` module covers it, say so in AGENT_RESPONSE instead of adding a native dependency. Anything that is NOT bundled in Expo Go (installing it would require a development build) is FORBIDDEN — if in doubt, use an \`expo-*\` module instead.
+    * The official Expo Go third-party list: react-native-reanimated, react-native-gesture-handler, react-native-safe-area-context, react-native-screens, react-native-worklets, react-native-keyboard-controller, react-native-svg, react-native-webview, react-native-maps, @shopify/react-native-skia, @shopify/flash-list, …;
+    * Template core: \`react\`, \`react-native\`, \`@expo/vector-icons\`.
+  NEVER add anything else — in particular NO \`@expo/ui\`, no \`@gorhom/*\`, no react-native-vision-camera, nothing that requires a development build. For a native feature, use an \`expo-*\` module or a listed Expo Go package; if no Expo Go-safe module covers it, say so in AGENT_RESPONSE instead of adding a native dependency.
+- SKILLS (SELECTIVE — never use them all): a skill library is in the \`skills/\` directory of this workspace (index: \`skills/INDEX.md\`). Read ONLY the skill(s) whose description matches the current task and follow them exactly. Never read or apply skills that do not match the task — applying unrelated skills produces wrong code. Skill files are instructions, not app code: never import, bundle, or modify them.
 - Use expo-router for navigation and PLAIN React Native components for all UI
   (View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert,
   Modal). Do NOT use @expo/ui or community native UI libraries — built-in RN controls only.
@@ -217,14 +218,57 @@ async function initProject(dir: string, agent: string): Promise<string[]> {
     }
   }
 
-  // The default template ships deps outside the strict "expo-* only" allow-list
+  // The default template ships deps outside the "Expo Go-safe" allow-list
   // (notably @expo/ui). Prune them so every generated app starts compliant.
   const pruned = pruneNonExpoDeps(dir);
+
+  // Shared skill library: copy it into the agent's workspace so it can read
+  // only the skills it needs (see AGENT_CONTEXT and the project AGENTS.md).
+  if (fs.existsSync(config.skillsDir)) {
+    fs.cpSync(config.skillsDir, path.join(dir, "skills"), { recursive: true });
+  }
+  ensureGitignoreEntry(dir, "skills/");
+  writeProjectAgentsMd(dir);
 
   if (!fs.existsSync(path.join(dir, ".git"))) {
     await gitInit(dir);
   }
   return pruned;
+}
+
+/** Append an entry to the project's .gitignore if not already present. */
+function ensureGitignoreEntry(dir: string, entry: string): void {
+  const giPath = path.join(dir, ".gitignore");
+  const gi = fs.existsSync(giPath) ? fs.readFileSync(giPath, "utf8") : "";
+  if (!gi.split("\n").includes(entry)) {
+    const sep = gi.length > 0 && !gi.endsWith("\n") ? "\n" : "";
+    fs.writeFileSync(giPath, gi + sep + entry + "\n");
+  }
+}
+
+/**
+ * Project-level rules so EVERY agent adapter (cline via AGENT_CONTEXT, and
+ * codex/claude via AGENTS.md auto-discovery) gets the constraints + skills.
+ */
+function writeProjectAgentsMd(dir: string): void {
+  fs.writeFileSync(
+    path.join(dir, "AGENTS.md"),
+    `# Generated app — agent rules
+
+This project is generated and MUST keep running in Expo Go.
+
+- Dependencies: ONLY Expo Go-bundled packages (\`expo-*\` modules + the official
+  Expo Go third-party list). Never add a package that requires a development
+  build. Never use \`@expo/ui\`. For a native feature use an \`expo-*\` module.
+- UI: plain React Native components only (View, Text, Pressable, TextInput,
+  ScrollView, ActivityIndicator, Alert, Modal) + @expo/vector-icons.
+- Skills: a library is available in \`skills/\` (index: \`skills/INDEX.md\`).
+  Read ONLY the skill(s) whose description matches the current task. Never apply
+  all skills — unrelated skills produce wrong code. Skill files are
+  instructions, not app code: never import, bundle, or modify them.
+`,
+    "utf8"
+  );
 }
 
 /** Remove any direct dependency that isn't on the strict allow-list. */

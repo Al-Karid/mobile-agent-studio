@@ -55,6 +55,10 @@ export const config = {
   // Scoped under process.cwd(); turbopackIgnore keeps build tracing bounded
   // (otherwise Turbopack traces the whole repo, which breaks page-data collection).
   projectsDir: path.join(/* turbopackIgnore: true */ process.cwd(), str("PROJECTS_DIR", "projects")),
+  // Shared agent skill library (ships with the server) — copied into every
+  // generated project so the coding agents can read only the skills they need
+  // (see jobs/generate.ts AGENT_CONTEXT and the project's AGENTS.md).
+  skillsDir: path.join(process.cwd(), "skills"),
 } as const;
 
 /** Local LAN IP, used to build the exp:// URL that Expo Go loads. */

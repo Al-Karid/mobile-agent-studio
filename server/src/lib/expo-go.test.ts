@@ -49,7 +49,7 @@ test("validateDeps: @react-navigation and expo-* are allowed", () => {
   assert.equal(r.ok, true);
 });
 
-test("validateDeps: official Expo Go third-party natives are flagged (strict policy)", () => {
+test("validateDeps: official Expo Go third-party natives are allowed", () => {
   const r = validateDeps({
     dependencies: {
       "react-native-maps": "1.18.0",
@@ -60,14 +60,23 @@ test("validateDeps: official Expo Go third-party natives are flagged (strict pol
       "@react-native-community/netinfo": "~11.4.0",
     },
   });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.violations, []);
+});
+
+test("validateDeps: packages that require a dev build are flagged", () => {
+  const r = validateDeps({
+    dependencies: {
+      "@gorhom/bottom-sheet": "5.0.0",
+      "react-native-vision-camera": "4.0.0",
+      "@react-native-clipboard/clipboard": "1.16.2",
+    },
+  });
   assert.equal(r.ok, false);
   assert.deepEqual([...r.violations].sort(), [
-    "@react-native-async-storage/async-storage",
-    "@react-native-community/netinfo",
-    "@shopify/react-native-skia",
-    "react-native-keyboard-controller",
-    "react-native-maps",
-    "react-native-webview",
+    "@gorhom/bottom-sheet",
+    "@react-native-clipboard/clipboard",
+    "react-native-vision-camera",
   ]);
 });
 
@@ -95,7 +104,7 @@ test("filterAllowed: prunes non-allow-listed deps (e.g. @expo/ui from the templa
     "@expo/ui": "~57.0.13",
     "expo-glass-effect": "~57.0.1",
     "react-native-screens": "~4.26.0",
-    "react-native-maps": "1.18.0",
+    "@gorhom/bottom-sheet": "5.0.0",
   });
   assert.deepEqual(kept, {
     expo: "~57.0.16",

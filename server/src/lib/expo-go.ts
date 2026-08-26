@@ -1,21 +1,50 @@
 /**
- * "expo-* only" dependency validation for GENERATED apps.
+ * "Expo Go-safe" dependency validation for GENERATED apps.
  *
- * Generated apps may depend ONLY on:
- *   - `expo-*` / `@expo/*` modules (the Expo Go-native surface),
- *   - the template core (`react`, `react-native`, `expo`, `@expo/vector-icons`),
- *   - the expo-router-required native stack (`react-native-screens` & friends),
+ * Expo Go bundles a curated set of native libraries; any other native library
+ * requires a development build. This module encodes that allow-list (SDK 57,
+ * verified Aug 2026): generated apps may depend ONLY on
+ *   - `expo-*` / `@expo/*` modules (except DENIED),
+ *   - the official Expo Go third-party list,
+ *   - the template core (`react`, `react-native`, `expo`, …),
  *   - `@react-navigation/*` (shipped transitively via expo-router).
  *
- * This is STRICTER than "runs in Expo Go": the official third-party allow-list
- * (react-native-maps, react-native-webview, @shopify/react-native-skia, …) IS
- * bundled in Expo Go, but the product policy is NO external native modules —
- * anything outside the set above is a violation (status `needs_dev_build`).
+ * Anything that requires a development build is a violation (status
+ * `needs_dev_build`). `@expo/ui` IS bundled by Expo Go but deliberately
+ * DENIED — generated apps must use plain React Native components. The default
+ * create-expo-app template ships `@expo/ui`; `initProject` prunes template
+ * deps through `filterAllowed` so every generated app starts compliant.
  *
- * The default create-expo-app template currently ships `@expo/ui`, which is
- * deliberately DENIED here; `initProject` prunes template deps through
- * `filterAllowed` so every generated app starts from a compliant base.
+ * Source: https://docs.expo.dev/versions/latest/sdk/third-party-overview.md
  */
+
+// Official Expo Go third-party library list (SDK 57) — these run in Expo Go
+// with NO development build.
+const EXPO_GO_THIRD_PARTY = new Set([
+  "@react-native-async-storage/async-storage",
+  "@react-native-community/datetimepicker",
+  "@react-native-community/netinfo",
+  "@react-native-community/slider",
+  "@react-native-masked-view/masked-view",
+  "@react-native-picker/picker",
+  "@react-native-segmented-control/segmented-control",
+  "@shopify/flash-list",
+  "@shopify/react-native-skia",
+  "@stripe/stripe-react-native",
+  "react-native-gesture-handler",
+  "react-native-keyboard-controller",
+  "react-native-maps",
+  "react-native-pager-view",
+  "react-native-reanimated",
+  "react-native-safe-area-context",
+  "react-native-screens",
+  "react-native-svg",
+  "react-native-view-shot",
+  "react-native-webview",
+  // reanimated 4 peer dependency — bundled in Expo Go's default template
+  // (create-expo-app) but not listed in the official third-party overview.
+  "react-native-worklets",
+]);
 
 // Core packages every Expo project lists directly and that are always fine.
 const CORE = new Set([
@@ -26,20 +55,9 @@ const CORE = new Set([
   "expo",
 ]);
 
-// The ONLY external native modules allowed — the expo-router-required stack
-// that ships in the default template and cannot be dropped. Every other native
-// module is a violation by design.
-const TEMPLATE_NATIVE_STACK = new Set([
-  "react-native-gesture-handler",
-  "react-native-reanimated",
-  "react-native-safe-area-context",
-  "react-native-screens",
-  "react-native-worklets",
-]);
-
-// Packages Expo Go bundles but the project deliberately does NOT support.
-// @expo/ui was dropped from the UI stack — generated apps must use plain
-// React Native components (see jobs/generate.ts AGENT_CONTEXT).
+// Packages the project deliberately does NOT support even though Expo Go
+// bundles them. @expo/ui was dropped from the UI stack — generated apps must
+// use plain React Native components (see jobs/generate.ts AGENT_CONTEXT).
 const DENIED = new Set(["@expo/ui"]);
 
 export interface DepValidation {
@@ -49,16 +67,16 @@ export interface DepValidation {
 }
 
 function isExpoModule(name: string): boolean {
-  return name.startsWith("expo-") || name.startsWith("@expo/");
+  return name === "expo" || name.startsWith("expo-") || name.startsWith("@expo/");
 }
 
-/** Strict allow-list check for a single direct dependency. */
+/** Allow-list check for a single direct dependency. */
 export function isAllowed(name: string): boolean {
   if (DENIED.has(name)) return false;
   return (
     CORE.has(name) ||
     isExpoModule(name) ||
-    TEMPLATE_NATIVE_STACK.has(name) ||
+    EXPO_GO_THIRD_PARTY.has(name) ||
     // Navigation packages ship transitively via expo-router.
     name.startsWith("@react-navigation/")
   );
@@ -76,8 +94,8 @@ export function filterAllowed(
 }
 
 /**
- * Validate a generated package.json's direct dependencies against the strict
- * "expo-* only" allow-list. Returns the packages that are NOT allowed.
+ * Validate a generated package.json's direct dependencies against the
+ * "Expo Go-safe" allow-list. Returns the packages that are NOT allowed.
  */
 export function validateDeps(pkg: {
   dependencies?: Record<string, string>;

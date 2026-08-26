@@ -18,8 +18,8 @@ Author: CISSE Alassane Al Moustapha, developer at ARTI (transports), Abidjan, C�
 The user wants to prototype and generate simple Expo apps from his iPhone without
 opening a laptop. V1 targets: **human validation** (he reviews the app visually in
 Expo Go), a **$0-20 total budget**, and **"Expo Go-safe guaranteed"** — generated
-apps may depend ONLY on `expo-*` modules (+ the template core/native stack); any
-external native module is flagged, never shipped broken.
+apps may depend ONLY on packages bundled in Expo Go (`expo-*` modules + the official
+third-party list); anything requiring a dev build is flagged, never shipped broken.
 
 ## Settled decisions (do not re-litigate without asking)
 
@@ -31,7 +31,7 @@ external native module is flagged, never shipped broken.
 | Human visual validation (validator "none") | keeps the backend 100% portable (no macOS simulator); the user is the observer | agent-device (Expo's automated device validator) — deferred |
 | No Docker in V1 | Metro↔iPhone + Docker Desktop friction (port mapping, node_modules volumes) | Docker now |
 | create-expo-app **default** template | real, feature-complete starting point | "blank" template (faster but bare) — **open: may switch for speed** |
-| Generated apps: **`expo-*` modules only** (+ template core/native stack), **no external native modules** | the default template ships `@expo/ui`, which leaked into generated apps; strict policy = instructions + validator + template prune (`expo-go.ts` `filterAllowed`) | "Expo Go-safe" allow-list (still *runs* in Expo Go, but allows third-party natives like maps/webview/skia) |
+| Generated apps: **Expo Go-bundled only** (`expo-*` modules + official Expo Go third-party list), **no dev-build packages**, **no `@expo/ui`** | the default template ships `@expo/ui`, which leaked into generated apps; fix = instructions + validator + template prune (`expo-go.ts` `filterAllowed`); Expo Go-bundled libs like react-native-keyboard-controller stay allowed | "expo-* only" (over-restrictive — blocks Expo Go-bundled libs) or anything-goes (breaks Expo Go) |
 | Agent = Cline CLI + DeepSeek v4-flash, `--thinking none` | cheap (~$0.03/app measured), fast enough | default thinking mode (streams endless reasoning tokens → slow, costly) |
 
 ## User preferences & constraints (honor these)
